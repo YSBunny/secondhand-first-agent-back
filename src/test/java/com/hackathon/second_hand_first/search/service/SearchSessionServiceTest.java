@@ -1,5 +1,6 @@
 package com.hackathon.second_hand_first.search.service;
 
+import com.hackathon.second_hand_first.carbon.service.CarbonSavingService;
 import com.hackathon.second_hand_first.product.domain.ProductCondition;
 import com.hackathon.second_hand_first.product.service.ProductUpsertService;
 import com.hackathon.second_hand_first.search.application.AiSearchClient;
@@ -45,6 +46,9 @@ class SearchSessionServiceTest {
     @Mock
     private ProductUpsertService productUpsertService;
 
+    @Mock
+    private CarbonSavingService carbonSavingService;
+
     private SearchSessionService searchSessionService;
 
     @BeforeEach
@@ -54,7 +58,8 @@ class SearchSessionServiceTest {
                 searchResultRepository,
                 searchMessageRepository,
                 aiSearchClient,
-                productUpsertService
+                productUpsertService,
+                carbonSavingService
         );
     }
 

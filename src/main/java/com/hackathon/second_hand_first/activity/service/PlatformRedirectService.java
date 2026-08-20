@@ -67,6 +67,7 @@ public class PlatformRedirectService {
             case DAANGN -> matchesDomain(host, "daangn.com");
             case BUNGJANG -> matchesDomain(host, "bunjang.co.kr");
             case JOONGGONARA -> matchesDomain(host, "joongna.com");
+            case ELEVENST -> matchesDomain(host, "11st.co.kr");
         };
     }
 
