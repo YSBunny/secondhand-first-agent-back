@@ -49,6 +49,11 @@ public class User {
     @Column(length = 1_000)
     private String profileImageUrl;
 
+    @Column
+    private String region;
+    private Double latitude;
+    private Double longitude;
+
     @Column(nullable = false)
     private boolean termsAgreed;
 
@@ -113,6 +118,26 @@ public class User {
 
     public void deleteProfileImage() {
         this.profileImageUrl = null;
+    }
+
+    public void updateLocation(
+            String region,
+            double latitude,
+            double longitude
+    ) {
+        if (region == null || region.isBlank()) {
+            throw new IllegalArgumentException("활동 지역은 필수입니다.");
+        }
+        if (latitude < -90 || latitude > 90) {
+            throw new IllegalArgumentException("올바르지 않은 위도입니다.");
+        }
+        if (longitude < -180 || longitude > 180) {
+            throw new IllegalArgumentException("올바르지 않은 경도입니다.");
+        }
+
+        this.region = region.trim();
+        this.latitude = latitude;
+        this.longitude = longitude;
     }
 
     @PrePersist
