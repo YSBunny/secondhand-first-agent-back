@@ -9,6 +9,7 @@ import com.hackathon.second_hand_first.product.domain.Platform;
 import com.hackathon.second_hand_first.product.domain.ProductCondition;
 import com.hackathon.second_hand_first.product.domain.TradeType;
 import com.hackathon.second_hand_first.product.repository.ProductRepository;
+import jakarta.persistence.EntityManager;
 import com.hackathon.second_hand_first.search.integration.ai.dto.AiLocationResponse;
 import com.hackathon.second_hand_first.search.integration.ai.dto.AiProductResponse;
 import com.hackathon.second_hand_first.search.integration.ai.dto.AiSellerResponse;
@@ -29,6 +30,15 @@ public class ProductUpsertService {
     private static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");
 
     private final ProductRepository productRepository;
+
+    /**
+     * 옵션을 비운 뒤 새로 넣기 전에 flush 하는 데 쓴다.
+     *
+     * <p>{@code product_delivery_options} 에 (배송정보, 순서) 유니크 제약이 있는데,
+     * Hibernate 는 한 flush 안에서 <b>지우기보다 넣기를 먼저</b> 한다. 중간에 한 번
+     * 비워 주지 않으면 같은 순서 번호가 겹쳐 제약을 위반한다.
+     */
+    private final EntityManager entityManager;
 
     @Transactional
     public Product upsert(AiProductResponse source) {
@@ -101,16 +111,34 @@ public class ProductUpsertService {
         }
 
         AiDeliveryExtraCostResponse extraCost = source.extraCost();
-        ProductDelivery delivery = ProductDelivery.create(
-                product,
-                source.status(),
-                source.payer(),
-                source.minFee(),
-                source.homeDeliveryFee(),
-                extraCost == null ? null : extraCost.jejuFee(),
-                extraCost == null ? null : extraCost.remoteAreaFee(),
-                extraCost == null ? null : extraCost.description()
-        );
+        // 이미 있으면 그 행을 갱신한다. 새 인스턴스로 갈아끼우면
+        // product_deliveries.product_id 유니크 제약에 걸린다 — Hibernate 가
+        // 옛 행을 지우기 전에 새 행을 넣기 때문이다.
+        ProductDelivery delivery = product.getDelivery();
+        if (delivery == null) {
+            delivery = ProductDelivery.create(
+                    product,
+                    source.status(),
+                    source.payer(),
+                    source.minFee(),
+                    source.homeDeliveryFee(),
+                    extraCost == null ? null : extraCost.jejuFee(),
+                    extraCost == null ? null : extraCost.remoteAreaFee(),
+                    extraCost == null ? null : extraCost.description()
+            );
+        } else {
+            delivery.update(
+                    source.status(),
+                    source.payer(),
+                    source.minFee(),
+                    source.homeDeliveryFee(),
+                    extraCost == null ? null : extraCost.jejuFee(),
+                    extraCost == null ? null : extraCost.remoteAreaFee(),
+                    extraCost == null ? null : extraCost.description()
+            );
+            // 비운 옵션을 지금 지운다. 새 옵션을 넣은 뒤에 지우면 순서 번호가 겹친다.
+            entityManager.flush();
+        }
 
         if (source.options() != null) {
             for (int index = 0; index < source.options().size(); index++) {

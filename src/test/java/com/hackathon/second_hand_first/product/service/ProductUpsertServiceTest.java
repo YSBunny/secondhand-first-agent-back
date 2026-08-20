@@ -42,11 +42,15 @@ class ProductUpsertServiceTest {
     @Mock
     private ProductRepository productRepository;
 
+    /** 새 상품 경로만 보는 테스트라 flush 가 일어나지 않는다. */
+    @Mock
+    private jakarta.persistence.EntityManager entityManager;
+
     private ProductUpsertService productUpsertService;
 
     @BeforeEach
     void setUp() {
-        productUpsertService = new ProductUpsertService(productRepository);
+        productUpsertService = new ProductUpsertService(productRepository, entityManager);
         when(productRepository.save(any(Product.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
     }

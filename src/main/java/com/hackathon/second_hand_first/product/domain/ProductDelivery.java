@@ -120,6 +120,36 @@ public class ProductDelivery {
         );
     }
 
+    /**
+     * 기존 행의 값을 갱신한다. <b>새 행을 만들어 갈아끼우지 않는다.</b>
+     *
+     * <p>{@code product_deliveries.product_id} 에 유니크 제약이 있어, 새 인스턴스를
+     * 연결하면 Hibernate 가 <b>옛 행을 지우기 전에 새 행을 넣어</b> 제약을 위반한다.
+     * 같은 상품을 다시 적재할 때마다 500 이 났다.
+     */
+    public void update(
+            DeliveryStatus status,
+            DeliveryPayer payer,
+            Long minFee,
+            Long homeDeliveryFee,
+            Long jejuFee,
+            Long remoteAreaFee,
+            String extraCostDescription
+    ) {
+        if (status == null) {
+            throw new IllegalArgumentException("배송 상태는 필수입니다.");
+        }
+        this.status = status;
+        this.payer = payer;
+        this.minFee = requireNullableNonNegative(minFee, "최저 배송비");
+        this.homeDeliveryFee = requireNullableNonNegative(homeDeliveryFee, "일반 배송비");
+        this.jejuFee = requireNullableNonNegative(jejuFee, "제주 추가 배송비");
+        this.remoteAreaFee = requireNullableNonNegative(remoteAreaFee, "도서산간 추가 배송비");
+        this.extraCostDescription = normalizeNullableText(extraCostDescription, 1_000);
+        // 옵션은 매번 다시 만든다. 배송 수단이 바뀌면 옛 옵션이 남으면 안 된다.
+        this.options.clear();
+    }
+
     public ProductDeliveryOption addOption(
             DeliveryMethod method,
             DeliveryCarrier carrier,
