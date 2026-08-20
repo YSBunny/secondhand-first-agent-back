@@ -1,5 +1,6 @@
 package com.hackathon.second_hand_first.user.service;
 
+import com.hackathon.second_hand_first.location.dto.response.CoordinateResponse;
 import com.hackathon.second_hand_first.user.domain.User;
 import com.hackathon.second_hand_first.user.dto.request.UserProfileUpdateRequest;
 import com.hackathon.second_hand_first.user.dto.response.UserProfileResponse;
@@ -34,6 +35,26 @@ public class UserService {
         return new UserProfileResponse(
                 user.getId(), user.getName(), user.getEmail(),
                 user.getProfileImageUrl(), user.getCreatedAt()
+        );
+    }
+
+    @Transactional
+    public CoordinateResponse updateLocation(
+            Long userId,
+            CoordinateResponse coordinate
+    ) {
+        User user = findUser(userId);
+
+        user.updateLocation(
+                coordinate.region(),
+                coordinate.latitude(),
+                coordinate.longitude()
+        );
+
+        return new CoordinateResponse(
+                user.getRegion(),
+                user.getLatitude(),
+                user.getLongitude()
         );
     }
 }
