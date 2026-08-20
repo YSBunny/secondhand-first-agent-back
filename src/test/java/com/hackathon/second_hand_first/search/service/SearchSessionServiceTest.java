@@ -15,6 +15,7 @@ import com.hackathon.second_hand_first.search.integration.ai.dto.AiSearchRespons
 import com.hackathon.second_hand_first.search.repository.SearchResultRepository;
 import com.hackathon.second_hand_first.search.repository.SearchMessageRepository;
 import com.hackathon.second_hand_first.search.repository.SearchSessionRepository;
+import com.hackathon.second_hand_first.user.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -45,6 +46,9 @@ class SearchSessionServiceTest {
     @Mock
     private ProductUpsertService productUpsertService;
 
+    @Mock
+    private UserRepository userRepository;
+
     private SearchSessionService searchSessionService;
 
     @BeforeEach
@@ -54,7 +58,8 @@ class SearchSessionServiceTest {
                 searchResultRepository,
                 searchMessageRepository,
                 aiSearchClient,
-                productUpsertService
+                productUpsertService,
+                userRepository
         );
     }
 
@@ -63,7 +68,7 @@ class SearchSessionServiceTest {
         AiParsedConditionsResponse analysis = new AiParsedConditionsResponse(
                 "에어팟",
                 300_000L,
-                List.of(ProductCondition.LIKE_NEW, ProductCondition.GOOD),
+                List.of(ProductCondition.LIKE_NEW, ProductCondition.LIGHTLY_USED),
                 SearchPriority.BEST_VALUE,
                 "30만원 이하, 중고 가능, 최고 가성비"
         );

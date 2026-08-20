@@ -44,11 +44,11 @@ class ProductRepositoryTest {
         entityManager.clear();
 
         Product found = productRepository
-                .findByPlatformAndExternalProductId(Platform.DAANGN, "mock_1")
+                .findByPlatformAndExternalProductId(Platform.NAVER_FLEAMARKET, "mock_1")
                 .orElseThrow();
 
         assertThat(found.getPrice()).isEqualTo(180_000L);
-        assertThat(productRepository.existsByPlatformAndExternalProductId(Platform.DAANGN, "mock_1"))
+        assertThat(productRepository.existsByPlatformAndExternalProductId(Platform.NAVER_FLEAMARKET, "mock_1"))
                 .isTrue();
     }
 

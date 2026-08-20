@@ -15,6 +15,10 @@ import com.hackathon.second_hand_first.search.exception.SearchSessionNotFoundExc
 import com.hackathon.second_hand_first.search.integration.ai.dto.AiParsedConditionsResponse;
 import com.hackathon.second_hand_first.search.integration.ai.dto.AiRecommendedProductResponse;
 import com.hackathon.second_hand_first.search.integration.ai.dto.AiSearchRequest;
+import com.hackathon.second_hand_first.search.integration.ai.dto.AiUserContext;
+import com.hackathon.second_hand_first.search.integration.ai.dto.AiUserLocation;
+import com.hackathon.second_hand_first.user.domain.User;
+import com.hackathon.second_hand_first.user.repository.UserRepository;
 import com.hackathon.second_hand_first.search.integration.ai.dto.AiSearchResponse;
 import com.hackathon.second_hand_first.search.repository.SearchSessionRepository;
 import com.hackathon.second_hand_first.search.repository.SearchResultRepository;
@@ -42,6 +46,7 @@ public class SearchSessionService {
     private final SearchMessageRepository searchMessageRepository;
     private final AiSearchClient aiSearchClient;
     private final ProductUpsertService productUpsertService;
+    private final UserRepository userRepository;
 
     @Transactional
     public SearchSessionCreateResponse create(
@@ -50,7 +55,13 @@ public class SearchSessionService {
     ) {
         String sessionId = generateSessionId();
         AiSearchResponse aiResponse = aiSearchClient.search(
-                new AiSearchRequest(sessionId, request.query())
+                new AiSearchRequest(
+                        request.query(),
+                        null,
+                        sessionId,
+                        null,
+                        buildUserContext(userId)
+                )
         );
         validateAiResponse(aiResponse);
         AiParsedConditionsResponse analysis = aiResponse.parsedConditions();
@@ -125,6 +136,33 @@ public class SearchSessionService {
                 })
                 .toList();
         searchResultRepository.saveAll(results);
+    }
+
+    /**
+     * 사용자 프로필에서 위치를 읽어 AI에 넘길 맥락을 만든다.
+     *
+     * <p>프론트는 검색할 때 위치를 보내지 않는다. 로그인 사용자이므로 여기서 채운다.
+     * 위치를 등록하지 않은 사용자면 null을 준다 — 없는 좌표를 지어내면 AI 쪽에서
+     * 엉뚱한 상품이 "가장 가까운 상품"이 된다.
+     *
+     * <p>편의점 픽업 가능 여부는 아직 수집하지 않아 null로 둔다. 기본값 true로 두면
+     * 편의점 반값택배를 포함한 최저 배송비가 쓰이는데, 주변에 그 편의점이 없는
+     * 사용자에게는 존재하지 않는 가격이다.
+     */
+    private AiUserContext buildUserContext(Long userId) {
+        return userRepository.findById(userId)
+                .map(SearchSessionService::toUserContext)
+                .orElse(null);
+    }
+
+    private static AiUserContext toUserContext(User user) {
+        if (user.getRegion() == null && user.getLatitude() == null) {
+            return null;
+        }
+        return new AiUserContext(
+                new AiUserLocation(user.getRegion(), user.getLatitude(), user.getLongitude()),
+                null
+        );
     }
 
     private void validateAiResponse(AiSearchResponse response) {
