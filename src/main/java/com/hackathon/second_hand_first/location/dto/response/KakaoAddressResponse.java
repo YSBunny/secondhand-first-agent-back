@@ -16,7 +16,28 @@ public record KakaoAddressResponse(
             String addressName,
 
             String x,
-            String y
+            String y,
+
+            Address address
+    ) {
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record Address(
+            @JsonProperty("region_1depth_name")
+            String region1DepthName,
+
+            @JsonProperty("region_2depth_name")
+            String region2DepthName,
+
+            @JsonProperty("region_3depth_name")
+            String region3DepthName,
+
+            @JsonProperty("region_3depth_h_name")
+            String administrativeRegion3DepthName,
+
+            @JsonProperty("h_code")
+            String regionCode
     ) {
     }
 }
