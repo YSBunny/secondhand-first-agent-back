@@ -6,4 +6,9 @@ public record UpdateLocationRequest(
         @NotBlank(message = "지역은 필수입니다.")
         String address
 ) {
+    public UpdateLocationRequest {
+        if (address != null) {
+            address = address.trim();
+        }
+    }
 }
