@@ -46,7 +46,7 @@ public class User {
     /**
      * 프로필 사진이 없는 경우 null입니다.
      */
-    @Column(length = 1_000)
+    @Column
     private String profileImageUrl;
 
     @Column
