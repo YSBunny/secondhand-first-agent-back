@@ -41,7 +41,7 @@ class ProductControllerTest {
                 119_000L, 39, List.of("https://cdn.example.com/1.jpg"),
                 "설명", null, null, List.of("DIRECT"), "판교",
                 null, 128L, new ProductDetailResponse.SellerInfo(32, 92.0),
-                null, null, "https://www.daangn.com/articles/mock_1",
+                null, null, "https://fleamarket.naver.com/articles/mock_1",
                 false, false, OffsetDateTime.now()
         );
         when(productService.getProductDetail(1L)).thenReturn(detail);

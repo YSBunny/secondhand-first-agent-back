@@ -41,7 +41,7 @@ class ProductUpsertServiceTest {
     @Test
     void 처음_수집한_외부상품을_저장한다() {
         AiProductResponse response = aiProduct("mock_new", 170_000L, List.of("https://cdn.example.com/new.jpg"));
-        when(productRepository.findByPlatformAndExternalProductId(Platform.DAANGN, "mock_new"))
+        when(productRepository.findByPlatformAndExternalProductId(Platform.NAVER_FLEAMARKET, "mock_new"))
                 .thenReturn(Optional.empty());
 
         Product saved = productUpsertService.upsert(response);
@@ -61,7 +61,7 @@ class ProductUpsertServiceTest {
                 160_000L,
                 List.of("https://cdn.example.com/updated-1.jpg", "https://cdn.example.com/updated-2.jpg")
         );
-        when(productRepository.findByPlatformAndExternalProductId(Platform.DAANGN, "mock_1"))
+        when(productRepository.findByPlatformAndExternalProductId(Platform.NAVER_FLEAMARKET, "mock_1"))
                 .thenReturn(Optional.of(existing));
 
         Product saved = productUpsertService.upsert(response);
@@ -74,7 +74,7 @@ class ProductUpsertServiceTest {
 
     private AiProductResponse aiProduct(String externalProductId, long price, List<String> imageUrls) {
         return new AiProductResponse(
-                Platform.DAANGN,
+                Platform.NAVER_FLEAMARKET,
                 externalProductId,
                 "AirPods Pro 2 (USB-C)",
                 "AI 서버가 수집한 상품 설명",
@@ -87,7 +87,7 @@ class ProductUpsertServiceTest {
                 true,
                 true,
                 true,
-                "https://www.daangn.com/articles/" + externalProductId,
+                "https://fleamarket.naver.com/products/" + externalProductId,
                 150L,
                 OffsetDateTime.parse("2026-08-20T09:00:00+09:00"),
                 imageUrls,

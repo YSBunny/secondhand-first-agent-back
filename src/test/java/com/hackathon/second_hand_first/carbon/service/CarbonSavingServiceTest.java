@@ -38,7 +38,7 @@ class CarbonSavingServiceTest {
                 "AirPods Pro 2 (USB-C)",
                 ProductCategory.EARPHONES,
                 180_000L,
-                Platform.DAANGN,
+                Platform.NAVER_FLEAMARKET,
                 ProductCondition.LIKE_NEW
         );
 
@@ -54,8 +54,8 @@ class CarbonSavingServiceTest {
                 "닌텐도 스위치 OLED 화이트",
                 ProductCategory.GAME_CONSOLE,
                 200_000L,
-                Platform.DAANGN,
-                ProductCondition.GOOD
+                Platform.NAVER_FLEAMARKET,
+                ProductCondition.LIGHTLY_USED
         );
 
         assertThat(result.status()).isEqualTo("AVAILABLE");
@@ -73,8 +73,8 @@ class CarbonSavingServiceTest {
                 "책상",
                 ProductCategory.OTHER,
                 50_000L,
-                Platform.DAANGN,
-                ProductCondition.GOOD
+                Platform.NAVER_FLEAMARKET,
+                ProductCondition.LIGHTLY_USED
         );
 
         assertThat(result.status()).isEqualTo("NOT_AVAILABLE");
@@ -88,7 +88,7 @@ class CarbonSavingServiceTest {
                 "알 수 없는 상품",
                 null,
                 30_000L,
-                Platform.BUNGJANG,
+                Platform.BUNJANG,
                 ProductCondition.USED
         );
 
@@ -105,7 +105,7 @@ class CarbonSavingServiceTest {
                 ProductCategory.EARPHONES,
                 250_000L,
                 Platform.ELEVENST,
-                ProductCondition.UNOPENED
+                ProductCondition.NEW
         );
 
         assertThat(result.status()).isEqualTo("NOT_APPLICABLE");
@@ -134,8 +134,8 @@ class CarbonSavingServiceTest {
         when(climatiqClient.estimate(45_000L, 26))
                 .thenReturn(CarbonSavingResult.notAvailable("API_ERROR"));
 
-        service.calculate("노트북", ProductCategory.LAPTOP, 45_000L, Platform.DAANGN, ProductCondition.GOOD);
-        service.calculate("노트북", ProductCategory.LAPTOP, 45_000L, Platform.DAANGN, ProductCondition.GOOD);
+        service.calculate("노트북", ProductCategory.LAPTOP, 45_000L, Platform.NAVER_FLEAMARKET, ProductCondition.LIGHTLY_USED);
+        service.calculate("노트북", ProductCategory.LAPTOP, 45_000L, Platform.NAVER_FLEAMARKET, ProductCondition.LIGHTLY_USED);
 
         verify(climatiqClient, times(1)).estimate(45_000L, 26);
     }
