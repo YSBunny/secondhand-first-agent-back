@@ -90,10 +90,18 @@ public class BestDealService {
      */
     private int calculateRecommendationScore(Product product) {
         int conditionScore = switch (product.getCondition()) {
-            case UNOPENED -> 20;
+            case NEW -> 20;
             case LIKE_NEW -> 16;
-            case GOOD -> 10;
+            case LIGHTLY_USED -> 10;
             case USED -> 4;
+            // TODO(팀 논의) UNSPECIFIED/UNKNOWN 점수는 잠정값이다.
+            // UNSPECIFIED는 판매자가 상태를 안 적은 것이고 UNKNOWN은 우리가 해석하지
+            // 못한 것이라, 둘 다 "상태가 나쁘다"는 뜻이 아니다. USED(4)로 두면 모르는
+            // 것을 나쁜 상태로 단정하게 되고, LIKE_NEW(16)로 두면 없는 정보를 좋게
+            // 지어내게 된다. 우선 중간값을 둔다.
+            // 참고: AI 쪽(tools.py)은 미상을 50으로 두어 USED(60)보다 낮게 잡는다.
+            // 두 기준이 서로 달라 정렬 결과가 갈릴 수 있으므로 합의가 필요하다.
+            case UNSPECIFIED, UNKNOWN -> 10;
         };
         int sellerScore = product.getSellerSnapshot() == null
                 ? 0

@@ -64,9 +64,10 @@ public class PlatformRedirectService {
 
     private boolean isAllowedHost(Platform platform, String host) {
         return switch (platform) {
-            case DAANGN -> matchesDomain(host, "daangn.com");
-            case BUNGJANG -> matchesDomain(host, "bunjang.co.kr");
-            case JOONGGONARA -> matchesDomain(host, "joongna.com");
+            case BUNJANG -> matchesDomain(host, "bunjang.co.kr");
+            case JOONGNA -> matchesDomain(host, "joongna.com");
+            case NAVER_FLEAMARKET -> matchesDomain(host, "naver.com");
+            case ELEVENST -> matchesDomain(host, "11st.co.kr");
         };
     }
 

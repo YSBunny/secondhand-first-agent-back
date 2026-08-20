@@ -45,7 +45,7 @@ public class ProductLocalDataInitializer implements ApplicationRunner {
     private Product airPodsPro2() {
         LocalDateTime refreshedAt = LocalDateTime.now();
         Product product = Product.create(
-                Platform.DAANGN,
+                Platform.NAVER_FLEAMARKET,
                 "mock_1",
                 "AirPods Pro 2 (USB-C)",
                 "박스와 충전 케이블을 포함한 구성품이 모두 있으며 깨끗하게 사용한 상품입니다.",
@@ -58,7 +58,7 @@ public class ProductLocalDataInitializer implements ApplicationRunner {
                 true,
                 true,
                 true,
-                "https://www.daangn.com/articles/mock_1",
+                "https://fleamarket.naver.com/products/mock_1",
                 128L,
                 refreshedAt.minusHours(2),
                 refreshedAt
@@ -72,14 +72,14 @@ public class ProductLocalDataInitializer implements ApplicationRunner {
     private Product macBookAirM2() {
         LocalDateTime refreshedAt = LocalDateTime.now();
         Product product = Product.create(
-                Platform.JOONGGONARA,
+                Platform.JOONGNA,
                 "mock_2",
                 "맥북 에어 M2",
                 "배터리 사이클이 낮고 박스와 기본 구성품을 모두 보관한 상품입니다.",
                 ProductCategory.LAPTOP,
                 980_000L,
                 1_300_000L,
-                ProductCondition.GOOD,
+                ProductCondition.LIGHTLY_USED,
                 ProductStatus.SELLING,
                 "강남",
                 true,
@@ -99,14 +99,14 @@ public class ProductLocalDataInitializer implements ApplicationRunner {
     private Product appleWatchSe() {
         LocalDateTime refreshedAt = LocalDateTime.now();
         Product product = Product.create(
-                Platform.BUNGJANG,
+                Platform.BUNJANG,
                 "mock_3",
                 "애플워치 SE",
                 "개봉하지 않은 미사용 상품이며 직거래와 택배 거래가 모두 가능합니다.",
                 ProductCategory.SMARTWATCH,
                 150_000L,
                 245_000L,
-                ProductCondition.UNOPENED,
+                ProductCondition.NEW,
                 ProductStatus.SELLING,
                 "분당",
                 true,

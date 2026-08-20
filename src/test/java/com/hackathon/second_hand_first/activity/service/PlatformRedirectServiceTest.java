@@ -63,8 +63,8 @@ class PlatformRedirectServiceTest {
 
         PlatformRedirectResponse response = platformRedirectService.record(1L, 10L);
 
-        assertThat(response.platform()).isEqualTo(Platform.DAANGN);
-        assertThat(response.redirectUrl()).isEqualTo("https://www.daangn.com/articles/mock_1");
+        assertThat(response.platform()).isEqualTo(Platform.NAVER_FLEAMARKET);
+        assertThat(response.redirectUrl()).isEqualTo("https://fleamarket.naver.com/products/mock_1");
         assertThat(response.redirectedAt().toString()).isEqualTo("2026-08-20T14:30+09:00");
         verify(redirectHistoryRepository).save(any(PlatformRedirectHistory.class));
     }
@@ -72,14 +72,14 @@ class PlatformRedirectServiceTest {
     @Test
     void 플랫폼과_일치하지_않는_외부_URL은_차단한다() {
         Product product = Product.create(
-                Platform.DAANGN,
+                Platform.NAVER_FLEAMARKET,
                 "unsafe_1",
                 "테스트 상품",
                 null,
                 ProductCategory.OTHER,
                 10_000L,
                 null,
-                ProductCondition.GOOD,
+                ProductCondition.LIGHTLY_USED,
                 ProductStatus.SELLING,
                 null,
                 true,
