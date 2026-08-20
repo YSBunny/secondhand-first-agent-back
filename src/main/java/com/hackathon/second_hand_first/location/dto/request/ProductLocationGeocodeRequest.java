@@ -35,7 +35,9 @@ public record ProductLocationGeocodeRequest(
             @JsonProperty("full_address")
             String fullAddress,
 
-            String code
+            String code,
+
+            GeographicCoordinates coordinates
     ) {
     }
 }

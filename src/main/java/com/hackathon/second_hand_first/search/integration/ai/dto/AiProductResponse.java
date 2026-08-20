@@ -21,7 +21,7 @@ public record AiProductResponse(
         Long referencePrice,
         ProductCondition condition,
         ProductStatus status,
-        String location,
+        AiLocationResponse location,
         Boolean directTradeAvailable,
         Boolean shippingAvailable,
         Boolean carbonReductionEligible,
@@ -31,4 +31,26 @@ public record AiProductResponse(
         List<String> imageUrls,
         AiSellerResponse seller
 ) {
+    public AiProductResponse withLocation(AiLocationResponse newLocation) {
+        return new AiProductResponse(
+                platform,
+                externalProductId,
+                title,
+                description,
+                category,
+                price,
+                referencePrice,
+                condition,
+                status,
+                newLocation,
+                directTradeAvailable,
+                shippingAvailable,
+                carbonReductionEligible,
+                platformUrl,
+                externalViewCount,
+                publishedAt,
+                imageUrls,
+                seller
+        );
+    }
 }
