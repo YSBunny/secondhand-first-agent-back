@@ -23,6 +23,13 @@ app:
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173}
 
+# AI 서버. base-url 이 없으면 검색이 502로 끝난다 — 주소를 모르는 상태에서
+# 임의의 분석 결과를 만들지 않는다.
+ai:
+  base-url: ${AI_BASE_URL:}
+  # AI 서버에 AI_API_KEY 가 설정돼 있으면 같은 값을 넣어야 한다.
+  api-key: ${AI_API_KEY:}
+
 kakao:
   local:
     base-url: https://dapi.kakao.com
