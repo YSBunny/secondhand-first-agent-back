@@ -1,5 +1,8 @@
 package com.hackathon.second_hand_first.search.service;
 
+import com.hackathon.second_hand_first.carbon.dto.CarbonSavingResult;
+import com.hackathon.second_hand_first.carbon.service.CarbonSavingService;
+import com.hackathon.second_hand_first.location.service.ProductLocationEnrichmentService;
 import com.hackathon.second_hand_first.search.application.AiSearchClient;
 import com.hackathon.second_hand_first.product.domain.Product;
 import com.hackathon.second_hand_first.product.service.ProductUpsertService;
@@ -8,6 +11,7 @@ import com.hackathon.second_hand_first.search.domain.SearchMessage;
 import com.hackathon.second_hand_first.search.domain.SearchSession;
 import com.hackathon.second_hand_first.search.dto.request.SearchSessionCreateRequest;
 import com.hackathon.second_hand_first.search.dto.response.RecentSearchSessionResponse;
+import com.hackathon.second_hand_first.search.dto.response.SearchResultItemResponse;
 import com.hackathon.second_hand_first.search.dto.response.SearchSessionCreateResponse;
 import com.hackathon.second_hand_first.search.dto.response.SearchSessionPageResponse;
 import com.hackathon.second_hand_first.search.dto.response.SearchSessionDetailResponse;
@@ -29,6 +33,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.UUID;
 import java.util.HashSet;
 import java.util.List;
@@ -46,7 +51,9 @@ public class SearchSessionService {
     private final SearchMessageRepository searchMessageRepository;
     private final AiSearchClient aiSearchClient;
     private final ProductUpsertService productUpsertService;
+    private final CarbonSavingService carbonSavingService;
     private final UserRepository userRepository;
+    private final ProductLocationEnrichmentService productLocationEnrichmentService;
 
     @Transactional
     public SearchSessionCreateResponse create(
@@ -64,7 +71,21 @@ public class SearchSessionService {
                 )
         );
         validateAiResponse(aiResponse);
-        AiParsedConditionsResponse analysis = aiResponse.parsedConditions();
+        validateRecommendations(aiResponse.products());
+
+        List<AiRecommendedProductResponse> enrichedProducts =
+                productLocationEnrichmentService.enrichRecommendations(
+                        aiResponse.products()
+                );
+
+        AiSearchResponse enrichedResponse = new AiSearchResponse(
+                aiResponse.parsedConditions(),
+                aiResponse.assistantMessage(),
+                aiResponse.resultCount(),
+                enrichedProducts
+        );
+
+        AiParsedConditionsResponse analysis = enrichedResponse.parsedConditions();
         SearchSession session = SearchSession.create(
                 sessionId,
                 userId,
@@ -85,8 +106,13 @@ public class SearchSessionService {
                 saved,
                 aiResponse.assistantMessage()
         ));
-        saveSearchResults(saved, aiResponse.products());
-        return SearchSessionCreateResponse.of(saved, aiResponse);
+        List<SearchResultItemResponse> recommendations =
+                saveSearchResults(saved, enrichedResponse.products());
+        return SearchSessionCreateResponse.of(
+                saved,
+                enrichedResponse,
+                recommendations
+        );
     }
 
     public SearchSessionPageResponse getRecentSessions(
@@ -115,27 +141,56 @@ public class SearchSessionService {
         }
     }
 
-    private void saveSearchResults(
+    private List<SearchResultItemResponse> saveSearchResults(
             SearchSession session,
             List<AiRecommendedProductResponse> recommendations
     ) {
         if (recommendations == null || recommendations.isEmpty()) {
-            return;
+            return List.of();
         }
         validateRecommendations(recommendations);
-        List<SearchResult> results = recommendations.stream()
-                .map(recommendation -> {
-                    Product product = productUpsertService.upsert(recommendation.product());
-                    return SearchResult.create(
-                            session,
-                            product,
-                            recommendation.rank(),
-                            recommendation.recommendationScore(),
-                            recommendation.recommendationReason()
-                    );
-                })
-                .toList();
+
+        List<SearchResult> results = new ArrayList<>();
+        List<SearchResultItemResponse> responseItems = new ArrayList<>();
+
+        for (AiRecommendedProductResponse recommendation : recommendations) {
+            Product product = productUpsertService.upsert(recommendation.product());
+            results.add(SearchResult.create(
+                    session,
+                    product,
+                    recommendation.rank(),
+                    recommendation.recommendationScore(),
+                    recommendation.recommendationReason()
+            ));
+
+            CarbonSavingResult carbonSaving = carbonSavingService.calculate(
+                    recommendation.product().title(),
+                    recommendation.product().category(),
+                    recommendation.product().price() != null ? recommendation.product().price() : 0L,
+                    recommendation.product().platform(),
+                    recommendation.product().condition()
+            );
+
+            String imageUrl = (recommendation.product().imageUrls() != null
+                    && !recommendation.product().imageUrls().isEmpty())
+                    ? recommendation.product().imageUrls().get(0)
+                    : null;
+
+            responseItems.add(new SearchResultItemResponse(
+                    product.getId() != null ? product.getId().toString() : null,
+                    recommendation.rank(),
+                    recommendation.product().platform(),
+                    recommendation.product().title(),
+                    recommendation.product().price() != null ? recommendation.product().price() : 0L,
+                    imageUrl,
+                    recommendation.recommendationScore(),
+                    recommendation.recommendationReason(),
+                    carbonSaving
+            ));
+        }
+
         searchResultRepository.saveAll(results);
+        return responseItems;
     }
 
     /**
@@ -176,6 +231,10 @@ public class SearchSessionService {
     }
 
     private void validateRecommendations(List<AiRecommendedProductResponse> recommendations) {
+        if (recommendations == null || recommendations.isEmpty()) {
+            return;
+        }
+
         Set<Integer> ranks = new HashSet<>();
         Set<String> productKeys = new HashSet<>();
         for (AiRecommendedProductResponse recommendation : recommendations) {
