@@ -19,6 +19,18 @@ public class UserService {
         return toResponse(findUser(userId));
     }
 
+    public CoordinateResponse getLocation(Long userId) {
+        User user = findUser(userId);
+        if (user.getLatitude() == null || user.getLongitude() == null) {
+            throw new IllegalArgumentException("사용자의 활동 지역을 먼저 설정해 주세요.");
+        }
+        return new CoordinateResponse(
+                user.getRegion(),
+                user.getLatitude(),
+                user.getLongitude()
+        );
+    }
+
     @Transactional
     public UserProfileResponse updateProfile(Long userId, UserProfileUpdateRequest request) {
         User user = findUser(userId);

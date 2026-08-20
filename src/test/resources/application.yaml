@@ -8,3 +8,8 @@ spring:
 app:
   auth:
     jwt-secret: second-hand-first-test-secret
+
+kakao:
+  local:
+    base-url: http://localhost
+    rest-api-key: test-key
