@@ -26,7 +26,7 @@ public record SearchSessionCreateResponse(
                         aiResponse.parsedConditions()
                 ),
                 aiResponse.assistantMessage(),
-                aiResponse.resultCount(),
+                aiResponse.totalResultCount(),
                 recommendations
         );
     }

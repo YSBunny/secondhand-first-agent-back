@@ -3,6 +3,7 @@ package com.hackathon.second_hand_first.search.service;
 import com.hackathon.second_hand_first.carbon.service.CarbonSavingService;
 import com.hackathon.second_hand_first.location.service.ProductLocationEnrichmentService;
 import com.hackathon.second_hand_first.product.domain.ProductCondition;
+import com.hackathon.second_hand_first.product.domain.Platform;
 import com.hackathon.second_hand_first.product.service.ProductUpsertService;
 import com.hackathon.second_hand_first.search.application.AiSearchClient;
 import com.hackathon.second_hand_first.search.domain.SearchPriority;
@@ -13,6 +14,9 @@ import com.hackathon.second_hand_first.search.dto.request.SearchSessionCreateReq
 import com.hackathon.second_hand_first.search.dto.response.SearchSessionCreateResponse;
 import com.hackathon.second_hand_first.search.dto.response.SearchSessionDetailResponse;
 import com.hackathon.second_hand_first.search.integration.ai.dto.AiParsedConditionsResponse;
+import com.hackathon.second_hand_first.search.integration.ai.dto.AiMarketReferenceResponse;
+import com.hackathon.second_hand_first.search.integration.ai.dto.AiScoringResponse;
+import com.hackathon.second_hand_first.search.integration.ai.dto.AiSearchRequest;
 import com.hackathon.second_hand_first.search.integration.ai.dto.AiSearchResponse;
 import com.hackathon.second_hand_first.search.repository.SearchResultRepository;
 import com.hackathon.second_hand_first.search.repository.SearchMessageRepository;
@@ -25,6 +29,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
+import java.time.OffsetDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -82,15 +87,30 @@ class SearchSessionServiceTest {
                 SearchPriority.BEST_VALUE,
                 "30만원 이하, 중고 가능, 최고 가성비"
         );
-        AiSearchResponse aiResponse = new AiSearchResponse(
-                analysis,
-                "당근·번개장터·중고나라에서 12개 매물을 찾았어요.",
-                12,
-                List.of()
-        );
-        when(aiSearchClient.search(any())).thenReturn(aiResponse);
-        when(productLocationEnrichmentService.enrichRecommendations(aiResponse.products()))
-                .thenReturn(aiResponse.products());
+        when(aiSearchClient.search(any())).thenAnswer(invocation -> {
+            AiSearchRequest aiRequest = invocation.getArgument(0);
+            return new AiSearchResponse(
+                    aiRequest.requestId(),
+                    aiRequest.sessionId(),
+                    new AiScoringResponse("v1"),
+                    analysis,
+                    "검색 조건에 맞는 매물을 찾지 못했어요.",
+                    new AiMarketReferenceResponse(
+                            "에어팟 프로 2",
+                            Platform.ELEVENST,
+                            "11번가",
+                            "POPULAR_NEW_PRODUCT",
+                            299_000L,
+                            4,
+                            OffsetDateTime.parse("2026-08-21T10:00:00+09:00"),
+                            "https://www.11st.co.kr/products/1"
+                    ),
+                    0,
+                    List.of()
+            );
+        });
+        when(productLocationEnrichmentService.enrichRecommendations(List.of()))
+                .thenReturn(List.of());
         when(searchSessionRepository.save(any(SearchSession.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -102,7 +122,7 @@ class SearchSessionServiceTest {
         assertThat(response.sessionId()).startsWith("ss_");
         assertThat(response.status()).isEqualTo(SearchSessionStatus.COMPLETED);
         assertThat(response.parsedConditions().keyword()).isEqualTo("에어팟");
-        assertThat(response.resultCount()).isEqualTo(12);
+        assertThat(response.resultCount()).isZero();
     }
 
     @Test

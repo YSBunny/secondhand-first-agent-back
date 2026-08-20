@@ -240,6 +240,8 @@ public class ProductLocationEnrichmentService {
                         recommendation.rank(),
                         recommendation.recommendationScore(),
                         recommendation.recommendationReason(),
+                        recommendation.scoreBreakdown(),
+                        recommendation.distanceKm(),
                         enrich(recommendation.product())
                 ))
                 .toList();

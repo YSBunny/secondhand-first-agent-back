@@ -29,33 +29,53 @@ public class CarbonSavingService {
             "nintendo switch", new WarmEntry(WARM_DESKTOP_CPUS, 0.42)
     );
 
-    // ProductCategory → ISIC4 코드 (Climatiq spend-based 경로)
     /**
-     * 카테고리 → ISIC4 코드. Climatiq spend-based API 가 이 코드를 받는다.
+     * 카테고리 → Climatiq 배출계수 식별자.
      *
-     * <p>매핑 근거는 CARBON_FEATURE_CONTEXT.md 2-2절이다.
+     * <p><b>ISIC4 코드 표를 대체한 것이다.</b> ISIC4 를 받는 {@code /procurement/v1/spend}
+     * 가 유료 전용이라 무료 키로는 403 이 온다. 무료로 되는 {@code /data/v1/estimate} 는
+     * 계수를 직접 지정해야 해서, 코드가 아니라 activity_id 를 들고 있는다.
      *
-     * <p><b>OTHER 는 일부러 넣지 않는다.</b> "분류하지 못했다"는 뜻이라
-     * 특정 품목군이 아니다. 예전에는 26(전자기기)으로 매핑돼 있었는데,
-     * 그러면 책상이나 의류가 전자기기로 계산돼 틀린 배출량이 조용히 나온다.
-     * 매핑이 없으면 NO_CATEGORY_MAPPING 으로 정직하게 실패한다.
+     * <p>전부 <b>한국(KR) CEDA 2025</b> 계수이며, 실제 호출로 값이 나오는 것을 확인했다.
+     *
+     * <p><b>{@code -price_purchaser} 를 쓴다.</b> 같은 품목에 생산자가격 계수와
+     * 구매자가격 계수가 따로 있는데, 우리가 넣는 {@code price} 는 소비자가 실제로 내는
+     * 값이다. 생산자가격 계수를 쓰면 유통 마진만큼 배출량이 과대평가된다
+     * (5만원 기준 가구 18.3kg 대 14.5kg).
+     *
+     * <p><b>OTHER 는 일부러 넣지 않는다.</b> "분류하지 못했다"는 뜻이라 특정 품목군이
+     * 아니다. 예전에 전자기기로 매핑돼 있어 책상이나 의류가 전자기기로 계산되던 적이
+     * 있었다. 매핑이 없으면 NO_CATEGORY_MAPPING 으로 정직하게 실패한다.
      */
-    private static final Map<ProductCategory, Integer> ISIC4_TABLE = Map.ofEntries(
+    /**
+     * 전자기기 공통 계수. 이 경로로 오는 것은 <b>무게를 모르는 전자기기</b>뿐이다 —
+     * 아는 것은 앞 단계에서 EPA WARM 무게 테이블로 계산되고 여기까지 오지 않는다.
+     */
+    private static final String ELECTRONICS_ACTIVITY_ID =
+            "electronics-type_electronic_computer-price_purchaser";
+
+    private static final Map<ProductCategory, String> ACTIVITY_ID_TABLE = Map.ofEntries(
             // 전자기기 — WARM 무게 테이블에 없는 것만 여기로 온다
-            Map.entry(ProductCategory.EARPHONES, 26),
-            Map.entry(ProductCategory.LAPTOP, 26),
-            Map.entry(ProductCategory.SMARTPHONE, 26),
-            Map.entry(ProductCategory.SMARTWATCH, 26),
-            Map.entry(ProductCategory.TABLET, 26),
-            Map.entry(ProductCategory.MONITOR, 26),
-            Map.entry(ProductCategory.GAME_CONSOLE, 26),
+            Map.entry(ProductCategory.EARPHONES, ELECTRONICS_ACTIVITY_ID),
+            Map.entry(ProductCategory.LAPTOP, ELECTRONICS_ACTIVITY_ID),
+            Map.entry(ProductCategory.SMARTPHONE, ELECTRONICS_ACTIVITY_ID),
+            Map.entry(ProductCategory.SMARTWATCH, ELECTRONICS_ACTIVITY_ID),
+            Map.entry(ProductCategory.TABLET, ELECTRONICS_ACTIVITY_ID),
+            Map.entry(ProductCategory.MONITOR, ELECTRONICS_ACTIVITY_ID),
+            Map.entry(ProductCategory.GAME_CONSOLE, ELECTRONICS_ACTIVITY_ID),
             // 그 외
-            Map.entry(ProductCategory.CLOTHING, 14),
-            Map.entry(ProductCategory.BAG_SHOES, 15),
-            Map.entry(ProductCategory.FURNITURE, 31),
-            Map.entry(ProductCategory.SPORTS_TOYS, 32),
-            Map.entry(ProductCategory.BOOKS, 58),
-            Map.entry(ProductCategory.WATCH_JEWELRY, 32)
+            Map.entry(ProductCategory.CLOTHING,
+                    "general_retail-type_clothing_and_clothing_accessories_stores-price_purchaser"),
+            Map.entry(ProductCategory.BAG_SHOES,
+                    "consumer_goods-type_leather_and_related_product_manufacturing-price_purchaser"),
+            Map.entry(ProductCategory.FURNITURE,
+                    "consumer_goods-type_upholstered_household_furniture-price_purchaser"),
+            Map.entry(ProductCategory.SPORTS_TOYS,
+                    "consumer_goods-type_sporting_and_athletic_goods_manufacturing-price_purchaser"),
+            Map.entry(ProductCategory.BOOKS,
+                    "paper_products-type_book_publishers-price_purchaser"),
+            Map.entry(ProductCategory.WATCH_JEWELRY,
+                    "consumer_goods-type_jewelry_and_silverware_manufacturing-price_purchaser")
     );
 
     private final ClimatiqClient climatiqClient;
@@ -105,15 +125,15 @@ public class CarbonSavingService {
             }
         }
 
-        // 2단계: category → ISIC4 → Climatiq API
+        // 2단계: category → 배출계수 → Climatiq API
         if (category == null) {
             return CarbonSavingResult.notAvailable("NO_CATEGORY_MAPPING");
         }
-        Integer isic4 = ISIC4_TABLE.get(category);
-        if (isic4 == null) {
+        String activityId = ACTIVITY_ID_TABLE.get(category);
+        if (activityId == null) {
             return CarbonSavingResult.notAvailable("NO_CATEGORY_MAPPING");
         }
-        return climatiqClient.estimate(price, isic4);
+        return climatiqClient.estimate(price, activityId);
     }
 
     // co2e_kg = |계수| × (무게kg / 907.185) × 1000

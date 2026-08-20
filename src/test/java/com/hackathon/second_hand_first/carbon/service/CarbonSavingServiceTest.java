@@ -71,7 +71,7 @@ class CarbonSavingServiceTest {
     @Test
     void 테이블_없는_상품_API키_없으면_NOT_AVAILABLE() {
         // 가구는 ISIC4 31 이다. 전자기기(26)로 보내면 틀린 배출량이 나온다.
-        when(climatiqClient.estimate(50_000L, 31))
+        when(climatiqClient.estimate(50_000L, "consumer_goods-type_upholstered_household_furniture-price_purchaser"))
                 .thenReturn(CarbonSavingResult.notAvailable("API_ERROR"));
 
         CarbonSavingResult result = service.calculate(
@@ -83,7 +83,7 @@ class CarbonSavingServiceTest {
         );
 
         assertThat(result.status()).isEqualTo("NOT_AVAILABLE");
-        verify(climatiqClient, times(1)).estimate(50_000L, 31);
+        verify(climatiqClient, times(1)).estimate(50_000L, "consumer_goods-type_upholstered_household_furniture-price_purchaser");
     }
 
     // 테스트 3-1: OTHER 는 ISIC4 매핑이 없다 — Climatiq 을 부르지 않는다
@@ -104,20 +104,29 @@ class CarbonSavingServiceTest {
         verifyNoInteractions(climatiqClient);
     }
 
-    // 테스트 3-2: 비전자기기 카테고리가 각자의 ISIC4 로 간다
+    // 테스트 3-2: 비전자기기 카테고리가 각자의 배출계수로 간다
     @Test
-    void 카테고리별_ISIC4_코드로_보낸다() {
-        record Case(ProductCategory category, int isic4) { }
+    void 카테고리별_배출계수로_보낸다() {
+        record Case(ProductCategory category, String activityId) { }
+        // 전부 한국(KR) CEDA 2025 계수이며 구매자가격 기준이다.
+        // 우리가 넣는 price 는 소비자가 실제로 내는 값이라, 생산자가격 계수를 쓰면
+        // 유통 마진만큼 배출량이 과대평가된다.
         List<Case> cases = List.of(
-                new Case(ProductCategory.CLOTHING, 14),
-                new Case(ProductCategory.BAG_SHOES, 15),
-                new Case(ProductCategory.FURNITURE, 31),
-                new Case(ProductCategory.SPORTS_TOYS, 32),
-                new Case(ProductCategory.BOOKS, 58),
-                new Case(ProductCategory.WATCH_JEWELRY, 32)
+                new Case(ProductCategory.CLOTHING,
+                        "general_retail-type_clothing_and_clothing_accessories_stores-price_purchaser"),
+                new Case(ProductCategory.BAG_SHOES,
+                        "consumer_goods-type_leather_and_related_product_manufacturing-price_purchaser"),
+                new Case(ProductCategory.FURNITURE,
+                        "consumer_goods-type_upholstered_household_furniture-price_purchaser"),
+                new Case(ProductCategory.SPORTS_TOYS,
+                        "consumer_goods-type_sporting_and_athletic_goods_manufacturing-price_purchaser"),
+                new Case(ProductCategory.BOOKS,
+                        "paper_products-type_book_publishers-price_purchaser"),
+                new Case(ProductCategory.WATCH_JEWELRY,
+                        "consumer_goods-type_jewelry_and_silverware_manufacturing-price_purchaser")
         );
         for (Case each : cases) {
-            when(climatiqClient.estimate(10_000L, each.isic4()))
+            when(climatiqClient.estimate(10_000L, each.activityId()))
                     .thenReturn(CarbonSavingResult.available(1.0, "CLIMATIQ"));
 
             CarbonSavingResult result = service.calculate(
@@ -131,10 +140,10 @@ class CarbonSavingServiceTest {
             assertThat(result.status()).isEqualTo("AVAILABLE");
         }
 
-        // SPORTS_TOYS 와 WATCH_JEWELRY 는 둘 다 32 라 호출 횟수로 세지 않고
-        // 코드별로 최소 한 번은 갔는지만 확인한다.
-        for (int isic4 : new int[] {14, 15, 31, 32, 58}) {
-            verify(climatiqClient, atLeastOnce()).estimate(10_000L, isic4);
+        // 카테고리마다 계수가 다르므로 이제 하나씩 정확히 확인할 수 있다.
+        // ISIC4 시절에는 SPORTS_TOYS 와 WATCH_JEWELRY 가 둘 다 32 라 구분되지 않았다.
+        for (Case each : cases) {
+            verify(climatiqClient, times(1)).estimate(10_000L, each.activityId());
         }
     }
 
@@ -151,7 +160,7 @@ class CarbonSavingServiceTest {
 
         assertThat(result.status()).isEqualTo("NOT_AVAILABLE");
         assertThat(result.reason()).isEqualTo("NO_CATEGORY_MAPPING");
-        verify(climatiqClient, never()).estimate(30_000L, 26);
+        verify(climatiqClient, never()).estimate(30_000L, "electronics-type_electronic_computer-price_purchaser");
     }
 
     // 테스트 5: ELEVENST + NEW → NOT_APPLICABLE
@@ -188,12 +197,12 @@ class CarbonSavingServiceTest {
     // 테스트 7: 캐시 동작 — 같은 입력으로 2번 호출 시 Climatiq는 1번만 호출
     @Test
     void 캐시_동작_두번째_호출은_API_미호출() {
-        when(climatiqClient.estimate(45_000L, 26))
+        when(climatiqClient.estimate(45_000L, "electronics-type_electronic_computer-price_purchaser"))
                 .thenReturn(CarbonSavingResult.notAvailable("API_ERROR"));
 
         service.calculate("노트북", ProductCategory.LAPTOP, 45_000L, Platform.NAVER_FLEAMARKET, ProductCondition.LIGHTLY_USED);
         service.calculate("노트북", ProductCategory.LAPTOP, 45_000L, Platform.NAVER_FLEAMARKET, ProductCondition.LIGHTLY_USED);
 
-        verify(climatiqClient, times(1)).estimate(45_000L, 26);
+        verify(climatiqClient, times(1)).estimate(45_000L, "electronics-type_electronic_computer-price_purchaser");
     }
 }

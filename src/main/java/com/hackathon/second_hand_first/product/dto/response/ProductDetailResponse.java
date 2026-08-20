@@ -23,7 +23,7 @@ public record ProductDetailResponse(
         List<String> tradeTypes,
         String location,
         Double distanceKm,
-        long viewCount,
+        Long viewCount,
         SellerInfo seller,
         Integer rank,
         String recommendationReason,
