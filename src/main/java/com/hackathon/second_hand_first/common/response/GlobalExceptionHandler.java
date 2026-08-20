@@ -1,6 +1,5 @@
 package com.hackathon.second_hand_first.common.response;
 
-import com.hackathon.second_hand_first.location.exception.AmbiguousLocationException;
 import com.hackathon.second_hand_first.auth.exception.UnauthorizedException;
 import com.hackathon.second_hand_first.location.exception.KakaoLocalException;
 import org.springframework.http.HttpStatus;
@@ -45,13 +44,5 @@ public class GlobalExceptionHandler {
     ) {
         return ResponseEntity.badRequest()
                 .body(ApiResponse.error("요청 본문 형식을 확인해 주세요."));
-    }
-
-    @ExceptionHandler(AmbiguousLocationException.class)
-    public ResponseEntity<ApiResponse<Void>> handleAmbiguousLocation(
-            AmbiguousLocationException exception
-    ) {
-        return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(ApiResponse.error(exception.getMessage()));
     }
 }

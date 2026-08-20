@@ -91,14 +91,6 @@ public class KakaoLocalService {
         );
     }
 
-    public CoordinateResponse resolveSelectedAddress(String address) {
-        return resolveRegionCoordinates(address);
-    }
-
-    public CoordinateResponse getCoordinate(String address) {
-        return resolveRegionCoordinates(address);
-    }
-
     private KakaoAddressResponse requestAddressSearch(String query, int size) {
         try {
             return restClient.get()
