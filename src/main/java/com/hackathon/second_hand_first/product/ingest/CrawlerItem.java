@@ -33,6 +33,9 @@ public record CrawlerItem(
         @JsonProperty("trade_method")
         List<String> tradeMethod,
 
+        @JsonProperty("delivery_fee")
+        CrawlerDeliveryFee deliveryFee,
+
         List<String> images,
 
         AiLocationResponse location

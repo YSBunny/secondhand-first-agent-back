@@ -4,7 +4,11 @@ import com.hackathon.second_hand_first.product.domain.Platform;
 import com.hackathon.second_hand_first.product.domain.ProductCategory;
 import com.hackathon.second_hand_first.product.domain.ProductCondition;
 import com.hackathon.second_hand_first.product.domain.ProductStatus;
+import com.hackathon.second_hand_first.product.domain.DeliveryCarrier;
+import com.hackathon.second_hand_first.product.domain.DeliveryMethod;
+import com.hackathon.second_hand_first.product.domain.DeliveryStatus;
 import com.hackathon.second_hand_first.product.domain.TradeType;
+import com.hackathon.second_hand_first.search.integration.ai.dto.AiDeliveryFeeResponse;
 import com.hackathon.second_hand_first.search.integration.ai.dto.AiProductResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -112,7 +116,7 @@ class CrawlerItemMapperTest {
                 sample.platform(), sample.platformProductId(), sample.url(), sample.title(),
                 sample.description(), sample.price(),
                 "MINT_CONDITION",      // 크롤러가 내보낸 적 없는 값
-                sample.tradeMethod(), sample.images(), sample.location()
+                sample.tradeMethod(), sample.deliveryFee(), sample.images(), sample.location()
         );
 
         assertThat(CrawlerItemMapper.toProduct(weird, ProductCategory.EARPHONES).condition())
@@ -126,12 +130,87 @@ class CrawlerItemMapperTest {
         CrawlerItem weird = new CrawlerItem(
                 "DANGGEUN", sample.platformProductId(), sample.url(), sample.title(),
                 sample.description(), sample.price(), sample.conditionLevel(),
-                sample.tradeMethod(), sample.images(), sample.location()
+                sample.tradeMethod(), sample.deliveryFee(), sample.images(), sample.location()
         );
 
         assertThatThrownBy(() -> CrawlerItemMapper.toProduct(weird, ProductCategory.EARPHONES))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("DANGGEUN");
+    }
+
+    @Test
+    @DisplayName("배송비가 옵션까지 옮겨진다")
+    void mapsDeliveryFee() {
+        CrawlerItem withOptions = first(item ->
+                item.deliveryFee() != null && !item.deliveryFee().optionsOrEmpty().isEmpty());
+
+        AiDeliveryFeeResponse fee = CrawlerItemMapper
+                .toProduct(withOptions, ProductCategory.EARPHONES).deliveryFee();
+
+        assertThat(fee).isNotNull();
+        assertThat(fee.status()).isNotNull();
+        assertThat(fee.options()).isNotEmpty();
+        assertThat(fee.options()).allSatisfy(option ->
+                assertThat(option.method()).isNotNull());
+    }
+
+    @Test
+    @DisplayName("직거래 전용은 NOT_AVAILABLE 로 남는다 — 결측이 아니다")
+    void keepsNotAvailable() {
+        CrawlerItem directOnly = first(item ->
+                item.deliveryFee() != null
+                        && "NOT_AVAILABLE".equals(item.deliveryFee().status()));
+
+        AiDeliveryFeeResponse fee = CrawlerItemMapper
+                .toProduct(directOnly, ProductCategory.EARPHONES).deliveryFee();
+
+        assertThat(fee.status())
+                .as("«판매자가 택배를 받지 않는다»는 사실이지 «모른다»가 아니다")
+                .isEqualTo(DeliveryStatus.NOT_AVAILABLE);
+        assertThat(fee.minFee()).isNull();
+    }
+
+    @Test
+    @DisplayName("택배사와 배송 수단이 계약 enum 으로 옮겨진다")
+    void mapsCarrierAndMethod() {
+        List<AiDeliveryFeeResponse> fees = crawled.itemsOrEmpty().stream()
+                .map(item -> CrawlerItemMapper.toProduct(item, ProductCategory.EARPHONES))
+                .map(AiProductResponse::deliveryFee)
+                .filter(java.util.Objects::nonNull)
+                .toList();
+
+        assertThat(fees).isNotEmpty();
+        assertThat(fees).allSatisfy(fee -> assertThat(fee.options()).allSatisfy(option -> {
+            assertThat(option.method()).isInstanceOf(DeliveryMethod.class);
+            if (option.carrier() != null) {
+                assertThat(option.carrier()).isInstanceOf(DeliveryCarrier.class);
+            }
+        }));
+    }
+
+    @Test
+    @DisplayName("모르는 배송 수단은 UNKNOWN 이고, 모르는 택배사는 비운다")
+    void unknownDeliveryValues() {
+        CrawlerItem sample = crawled.itemsOrEmpty().getFirst();
+        CrawlerDeliveryFee weird = new CrawlerDeliveryFee(
+                "AVAILABLE", "BUYER", 3_000L, 3_000L,
+                List.of(new CrawlerDeliveryFee.Option(
+                        "DRONE", "KAKAO_T", false, 3_000L, null, "X")),
+                null
+        );
+        CrawlerItem item = new CrawlerItem(
+                sample.platform(), sample.platformProductId(), sample.url(), sample.title(),
+                sample.description(), sample.price(), sample.conditionLevel(),
+                sample.tradeMethod(), weird, sample.images(), sample.location()
+        );
+
+        AiDeliveryFeeResponse fee = CrawlerItemMapper
+                .toProduct(item, ProductCategory.EARPHONES).deliveryFee();
+
+        assertThat(fee.options().getFirst().method()).isEqualTo(DeliveryMethod.UNKNOWN);
+        assertThat(fee.options().getFirst().carrier())
+                .as("계약에 없는 택배사를 지어내지 않는다")
+                .isNull();
     }
 
     @Test
