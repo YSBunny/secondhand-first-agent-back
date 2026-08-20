@@ -1,6 +1,7 @@
 package com.hackathon.second_hand_first.search.integration.ai;
 
 import tools.jackson.databind.json.JsonMapper;
+import com.hackathon.second_hand_first.product.domain.DeliveryPayer;
 import com.hackathon.second_hand_first.product.domain.Platform;
 import com.hackathon.second_hand_first.product.domain.ProductCategory;
 import com.hackathon.second_hand_first.product.domain.ProductCondition;
@@ -36,6 +37,8 @@ class AiSearchResponseMapperTest {
                   "description": "상태 좋아요", "images": ["https://img/1.jpg"],
                   "condition_level": "LIGHTLY_USED",
                   "trade_method": ["PARCEL", "MEET"],
+                  "delivery_fee": {"status":"AVAILABLE","payer":"BUYER",
+                                   "min_fee":2500,"home_delivery_fee":5000},
                   "location": {"name": "상암동", "full_address": "서울특별시 마포구 상암동", "precision": "FULL"},
                   "_score_breakdown": {"best_deal_score": 91},
                   "reasoning": "가격이 저렴합니다."
@@ -163,6 +166,34 @@ class AiSearchResponseMapperTest {
             assertThat(product.carbonReductionEligible()).isNotNull();
             assertThat(product.externalViewCount()).isNotNull();
         }
+    }
+
+    @Test
+    @DisplayName("배송비를 그대로 옮긴다 — 총 지불액 계산의 근거다")
+    void mapsDeliveryFee() throws Exception {
+        var fee = map().products().get(0).product().deliveryFee();
+        assertThat(fee.status()).isEqualTo("AVAILABLE");
+        assertThat(fee.minFee()).isEqualTo(2500L);
+        assertThat(fee.homeDeliveryFee()).isEqualTo(5000L);
+        assertThat(fee.payer()).isEqualTo(DeliveryPayer.BUYER);
+    }
+
+    @Test
+    @DisplayName("편의점 픽업만 가능하면 집앞 배송비가 비어 온다")
+    void keepsNullHomeDeliveryFee() throws Exception {
+        var graph = objectMapper.readValue("""
+                {"request_id":"r","query_parsed":{"product":"x","used_allowed":true},
+                 "items":[{"platform":"NAVER_FLEAMARKET","platform_product_id":"1","price":1000,
+                           "condition_level":"USED","trade_method":["PARCEL"],
+                           "delivery_fee":{"status":"AVAILABLE","payer":"BUYER",
+                                           "min_fee":3600,"home_delivery_fee":null}}],
+                 "top_recommendation_ids":["NAVER_FLEAMARKET:1"]}
+                """, AiGraphSearchResponse.class);
+        var fee = AiSearchResponseMapper.toSearchResponse(graph)
+                .products().get(0).product().deliveryFee();
+        // null 을 0으로 바꾸면 편의점이 없는 사용자에게 "무료배송"으로 보인다.
+        assertThat(fee.minFee()).isEqualTo(3600L);
+        assertThat(fee.homeDeliveryFee()).isNull();
     }
 
     @Test

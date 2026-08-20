@@ -27,6 +27,8 @@ public record AiGraphItem(
         ProductCondition conditionLevel,
         @JsonProperty("trade_method")
         List<String> tradeMethod,
+        @JsonProperty("delivery_fee")
+        AiDeliveryFeeResponse deliveryFee,
         AiGraphLocation location,
         // rerank가 붙이는 값. 상위 4건에만 reasoning이 있다.
         @JsonProperty("_score_breakdown")

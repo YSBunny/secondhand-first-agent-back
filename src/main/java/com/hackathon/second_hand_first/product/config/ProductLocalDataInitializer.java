@@ -1,5 +1,7 @@
 package com.hackathon.second_hand_first.product.config;
 
+import com.hackathon.second_hand_first.product.domain.DeliveryFee;
+import com.hackathon.second_hand_first.product.domain.DeliveryPayer;
 import com.hackathon.second_hand_first.product.domain.Platform;
 import com.hackathon.second_hand_first.product.domain.Product;
 import com.hackathon.second_hand_first.product.domain.ProductCategory;
@@ -57,6 +59,7 @@ public class ProductLocalDataInitializer implements ApplicationRunner {
                 "판교",
                 true,
                 true,
+                DeliveryFee.of(3_000L, 3_000L, DeliveryPayer.BUYER),
                 true,
                 "https://fleamarket.naver.com/products/mock_1",
                 128L,
@@ -84,6 +87,7 @@ public class ProductLocalDataInitializer implements ApplicationRunner {
                 "강남",
                 true,
                 true,
+                DeliveryFee.of(3_000L, 3_000L, DeliveryPayer.BUYER),
                 true,
                 "https://web.joongna.com/product/mock_2",
                 86L,
@@ -111,6 +115,7 @@ public class ProductLocalDataInitializer implements ApplicationRunner {
                 "분당",
                 true,
                 true,
+                DeliveryFee.of(3_000L, 3_000L, DeliveryPayer.BUYER),
                 true,
                 "https://m.bunjang.co.kr/products/mock_3",
                 54L,

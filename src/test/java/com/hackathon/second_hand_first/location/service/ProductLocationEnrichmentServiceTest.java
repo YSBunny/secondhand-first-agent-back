@@ -201,6 +201,7 @@ class ProductLocationEnrichmentServiceTest {
                 location,
                 true,
                 true,
+                null,
                 true,
                 "https://fleamarket.naver.com/products/mock_1",
                 150L,

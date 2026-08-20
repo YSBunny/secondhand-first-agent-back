@@ -1,10 +1,12 @@
 package com.hackathon.second_hand_first.product.service;
 
 import com.hackathon.second_hand_first.location.dto.response.GeographicCoordinates;
+import com.hackathon.second_hand_first.product.domain.DeliveryFee;
 import com.hackathon.second_hand_first.product.domain.Product;
 import com.hackathon.second_hand_first.product.domain.ProductTradeRegion;
 import com.hackathon.second_hand_first.product.repository.ProductRepository;
 import com.hackathon.second_hand_first.search.integration.ai.dto.AiLocationResponse;
+import com.hackathon.second_hand_first.search.integration.ai.dto.AiDeliveryFeeResponse;
 import com.hackathon.second_hand_first.search.integration.ai.dto.AiProductResponse;
 import com.hackathon.second_hand_first.search.integration.ai.dto.AiSellerResponse;
 import lombok.RequiredArgsConstructor;
@@ -48,6 +50,7 @@ public class ProductUpsertService {
                                 : source.location().fullAddress(),
                         source.directTradeAvailable(),
                         source.shippingAvailable(),
+                        toDeliveryFee(source.deliveryFee()),
                         source.carbonReductionEligible(),
                         source.platformUrl(),
                         source.externalViewCount(),
@@ -68,6 +71,7 @@ public class ProductUpsertService {
                         : source.location().fullAddress(),
                 source.directTradeAvailable(),
                 source.shippingAvailable(),
+                toDeliveryFee(source.deliveryFee()),
                 source.carbonReductionEligible(),
                 source.platformUrl(),
                 source.externalViewCount(),
@@ -127,6 +131,19 @@ public class ProductUpsertService {
                 seller.mannerTemperature(),
                 capturedAt
         );
+    }
+
+    /**
+     * AI가 준 배송비를 도메인 값 객체로 옮긴다.
+     *
+     * <p>없거나 택배 불가면 빈 값으로 둔다. 0으로 채우면 "배송비를 모른다"와
+     * "무료배송"이 구분되지 않아 그 매물이 총액 1위로 올라간다.
+     */
+    private DeliveryFee toDeliveryFee(AiDeliveryFeeResponse source) {
+        if (source == null || !"AVAILABLE".equals(source.status())) {
+            return DeliveryFee.unavailable();
+        }
+        return DeliveryFee.of(source.minFee(), source.homeDeliveryFee(), source.payer());
     }
 
     private void validateRequiredFields(AiProductResponse source) {
