@@ -30,15 +30,32 @@ public class CarbonSavingService {
     );
 
     // ProductCategory → ISIC4 코드 (Climatiq spend-based 경로)
-    private static final Map<ProductCategory, Integer> ISIC4_TABLE = Map.of(
-            ProductCategory.EARPHONES, 26,
-            ProductCategory.LAPTOP, 26,
-            ProductCategory.SMARTPHONE, 26,
-            ProductCategory.SMARTWATCH, 26,
-            ProductCategory.TABLET, 26,
-            ProductCategory.MONITOR, 26,
-            ProductCategory.GAME_CONSOLE, 26,
-            ProductCategory.OTHER, 26
+    /**
+     * 카테고리 → ISIC4 코드. Climatiq spend-based API 가 이 코드를 받는다.
+     *
+     * <p>매핑 근거는 CARBON_FEATURE_CONTEXT.md 2-2절이다.
+     *
+     * <p><b>OTHER 는 일부러 넣지 않는다.</b> "분류하지 못했다"는 뜻이라
+     * 특정 품목군이 아니다. 예전에는 26(전자기기)으로 매핑돼 있었는데,
+     * 그러면 책상이나 의류가 전자기기로 계산돼 틀린 배출량이 조용히 나온다.
+     * 매핑이 없으면 NO_CATEGORY_MAPPING 으로 정직하게 실패한다.
+     */
+    private static final Map<ProductCategory, Integer> ISIC4_TABLE = Map.ofEntries(
+            // 전자기기 — WARM 무게 테이블에 없는 것만 여기로 온다
+            Map.entry(ProductCategory.EARPHONES, 26),
+            Map.entry(ProductCategory.LAPTOP, 26),
+            Map.entry(ProductCategory.SMARTPHONE, 26),
+            Map.entry(ProductCategory.SMARTWATCH, 26),
+            Map.entry(ProductCategory.TABLET, 26),
+            Map.entry(ProductCategory.MONITOR, 26),
+            Map.entry(ProductCategory.GAME_CONSOLE, 26),
+            // 그 외
+            Map.entry(ProductCategory.CLOTHING, 14),
+            Map.entry(ProductCategory.BAG_SHOES, 15),
+            Map.entry(ProductCategory.FURNITURE, 31),
+            Map.entry(ProductCategory.SPORTS_TOYS, 32),
+            Map.entry(ProductCategory.BOOKS, 58),
+            Map.entry(ProductCategory.WATCH_JEWELRY, 32)
     );
 
     private final ClimatiqClient climatiqClient;

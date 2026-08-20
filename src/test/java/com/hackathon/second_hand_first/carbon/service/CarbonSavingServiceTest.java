@@ -7,6 +7,8 @@ import com.hackathon.second_hand_first.product.domain.ProductCategory;
 import com.hackathon.second_hand_first.product.domain.ProductCondition;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+
+import java.util.List;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -15,7 +17,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.offset;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -66,19 +70,72 @@ class CarbonSavingServiceTest {
     // 테스트 3: 테이블에 없는 상품 + API 키 없음 → Climatiq 경로, NOT_AVAILABLE 반환
     @Test
     void 테이블_없는_상품_API키_없으면_NOT_AVAILABLE() {
-        when(climatiqClient.estimate(50_000L, 26))
+        // 가구는 ISIC4 31 이다. 전자기기(26)로 보내면 틀린 배출량이 나온다.
+        when(climatiqClient.estimate(50_000L, 31))
                 .thenReturn(CarbonSavingResult.notAvailable("API_ERROR"));
 
         CarbonSavingResult result = service.calculate(
                 "책상",
-                ProductCategory.OTHER,
+                ProductCategory.FURNITURE,
                 50_000L,
                 Platform.NAVER_FLEAMARKET,
                 ProductCondition.LIGHTLY_USED
         );
 
         assertThat(result.status()).isEqualTo("NOT_AVAILABLE");
-        verify(climatiqClient, times(1)).estimate(50_000L, 26);
+        verify(climatiqClient, times(1)).estimate(50_000L, 31);
+    }
+
+    // 테스트 3-1: OTHER 는 ISIC4 매핑이 없다 — Climatiq 을 부르지 않는다
+    @Test
+    void category_OTHER_이면_Climatiq_미호출() {
+        CarbonSavingResult result = service.calculate(
+                "정체를 알 수 없는 물건",
+                ProductCategory.OTHER,
+                50_000L,
+                Platform.NAVER_FLEAMARKET,
+                ProductCondition.LIGHTLY_USED
+        );
+
+        // OTHER 는 "분류하지 못했다"는 뜻이라 특정 품목군이 아니다.
+        // 임의의 코드로 계산하면 틀린 배출량이 조용히 나온다.
+        assertThat(result.status()).isEqualTo("NOT_AVAILABLE");
+        assertThat(result.reason()).isEqualTo("NO_CATEGORY_MAPPING");
+        verifyNoInteractions(climatiqClient);
+    }
+
+    // 테스트 3-2: 비전자기기 카테고리가 각자의 ISIC4 로 간다
+    @Test
+    void 카테고리별_ISIC4_코드로_보낸다() {
+        record Case(ProductCategory category, int isic4) { }
+        List<Case> cases = List.of(
+                new Case(ProductCategory.CLOTHING, 14),
+                new Case(ProductCategory.BAG_SHOES, 15),
+                new Case(ProductCategory.FURNITURE, 31),
+                new Case(ProductCategory.SPORTS_TOYS, 32),
+                new Case(ProductCategory.BOOKS, 58),
+                new Case(ProductCategory.WATCH_JEWELRY, 32)
+        );
+        for (Case each : cases) {
+            when(climatiqClient.estimate(10_000L, each.isic4()))
+                    .thenReturn(CarbonSavingResult.available(1.0, "CLIMATIQ"));
+
+            CarbonSavingResult result = service.calculate(
+                    "상품-" + each.category(),
+                    each.category(),
+                    10_000L,
+                    Platform.BUNJANG,
+                    ProductCondition.USED
+            );
+
+            assertThat(result.status()).isEqualTo("AVAILABLE");
+        }
+
+        // SPORTS_TOYS 와 WATCH_JEWELRY 는 둘 다 32 라 호출 횟수로 세지 않고
+        // 코드별로 최소 한 번은 갔는지만 확인한다.
+        for (int isic4 : new int[] {14, 15, 31, 32, 58}) {
+            verify(climatiqClient, atLeastOnce()).estimate(10_000L, isic4);
+        }
     }
 
     // 테스트 4: category가 null → NO_CATEGORY_MAPPING, Climatiq 미호출

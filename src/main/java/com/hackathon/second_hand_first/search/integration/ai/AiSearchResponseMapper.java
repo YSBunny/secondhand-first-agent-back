@@ -42,13 +42,12 @@ public final class AiSearchResponseMapper {
     private static final ProductStatus ASSUMED_STATUS = ProductStatus.SELLING;
 
     /**
-     * AI가 아직 카테고리를 추론해 주지 않는다. 통합 스키마에도 카테고리가 없다
-     * (3사 체계가 달라 매핑을 미뤘다).
+     * AI가 카테고리를 추론하지 못했을 때 쓴다.
      *
-     * <p>ProductUpsertService 가 category 를 필수로 요구하므로 OTHER 로 채운다.
-     * AI가 query_parsed.category 를 내려주기 시작하면 그 값을 쓴다.
+     * <p>ProductUpsertService 가 category 를 필수로 요구해서 null 을 둘 수 없다.
+     * OTHER 는 ISIC4 매핑이 없으므로 탄소 계산에서 정직하게 빠진다.
      */
-    private static final ProductCategory FALLBACK_CATEGORY = ProductCategory.OTHER;
+    private static final ProductCategory UNKNOWN_CATEGORY = ProductCategory.OTHER;
 
     /**
      * 크롤러가 조회수를 수집하지 않는다. 필수 값이라 0을 넣지만
@@ -68,8 +67,13 @@ public final class AiSearchResponseMapper {
 
     public static AiSearchResponse toSearchResponse(AiGraphSearchResponse graph) {
         List<AiGraphItem> items = graph.items() == null ? List.of() : graph.items();
+        // 카테고리는 상품마다가 아니라 검색 한 건에 하나다. 사용자가 무엇을
+        // 찾는지에서 나오는 값이라 후보마다 달라질 이유가 없다.
+        ProductCategory category = categoryOf(
+                graph.queryParsed() == null ? null : graph.queryParsed().category()
+        );
         List<AiRecommendedProductResponse> products = toRecommendations(
-                items, graph.topRecommendationIds()
+                items, graph.topRecommendationIds(), category
         );
         return new AiSearchResponse(
                 toParsedConditions(graph.queryParsed()),
@@ -156,9 +160,27 @@ public final class AiSearchResponseMapper {
      * <p>순위는 AI의 top_recommendation_ids 순서를 그대로 따른다. 백엔드가 다시
      * 정렬하면 AI가 계산한 순위와 어긋나 두 곳에서 다른 답이 나온다.
      */
+    /**
+     * AI가 준 카테고리 문자열을 enum 으로 옮긴다.
+     *
+     * <p>추론하지 못했거나 우리가 모르는 값이면 OTHER 로 둔다. 임의로 가까운
+     * 카테고리에 밀어 넣으면 탄소 계산이 엉뚱한 ISIC4 코드를 쓰게 된다.
+     */
+    private static ProductCategory categoryOf(String value) {
+        if (value == null || value.isBlank()) {
+            return UNKNOWN_CATEGORY;
+        }
+        try {
+            return ProductCategory.valueOf(value.trim().toUpperCase());
+        } catch (IllegalArgumentException exception) {
+            return UNKNOWN_CATEGORY;
+        }
+    }
+
     private static List<AiRecommendedProductResponse> toRecommendations(
             List<AiGraphItem> items,
-            List<String> topIds
+            List<String> topIds,
+            ProductCategory category
     ) {
         if (topIds == null || topIds.isEmpty()) {
             return List.of();
@@ -181,20 +203,20 @@ public final class AiSearchResponseMapper {
                     rank++,
                     item.scoreBreakdown() == null ? null : item.scoreBreakdown().bestDealScore(),
                     item.reasoning(),
-                    toProduct(item)
+                    toProduct(item, category)
             ));
         }
         return result;
     }
 
-    private static AiProductResponse toProduct(AiGraphItem item) {
+    private static AiProductResponse toProduct(AiGraphItem item, ProductCategory category) {
         List<String> tradeMethod = item.tradeMethod() == null ? List.of() : item.tradeMethod();
         return new AiProductResponse(
                 item.platform(),
                 item.platformProductId(),
                 item.title(),
                 item.description(),
-                FALLBACK_CATEGORY,
+                category,
                 item.price(),
                 // 공식 스토어 가격 개념이 파이프라인에 없다. 11번가는 오픈마켓
                 // 판매자가지 정가가 아니므로 정가 대비 절감률을 만들 근거가 없다.
