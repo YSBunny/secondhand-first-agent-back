@@ -7,6 +7,7 @@ import com.hackathon.second_hand_first.product.domain.Product;
 import com.hackathon.second_hand_first.product.domain.ProductCategory;
 import com.hackathon.second_hand_first.product.domain.ProductCondition;
 import com.hackathon.second_hand_first.product.domain.ProductStatus;
+import com.hackathon.second_hand_first.product.domain.TradeType;
 import com.hackathon.second_hand_first.product.domain.ProductTradeRegion;
 import com.hackathon.second_hand_first.product.repository.ProductRepository;
 import com.hackathon.second_hand_first.product.support.ProductFixture;
@@ -195,13 +196,11 @@ class ProductLocationEnrichmentServiceTest {
                 "상품 설명",
                 ProductCategory.EARPHONES,
                 170_000L,
-                299_000L,
                 ProductCondition.LIKE_NEW,
                 ProductStatus.SELLING,
                 location,
-                true,
-                true,
-                true,
+                List.of(TradeType.DIRECT, TradeType.DELIVERY),
+                null,
                 "https://fleamarket.naver.com/products/mock_1",
                 150L,
                 OffsetDateTime.parse("2026-08-20T09:00:00+09:00"),

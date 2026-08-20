@@ -298,7 +298,7 @@ AI가 자연어 분석·외부 탐색·추천 순위까지 반환한다는 전�
 
 ### AI 검색 서버
 
-- `AiSearchClient` 인터페이스와 임시 `AiSearchRequest/AiSearchResponse/AiProductResponse` 계약은 존재한다.
+- `AiSearchClient` 인터페이스와 확정된 `AiSearchRequest/AiSearchResponse/AiProductResponse` 계약이 존재한다.
 - 실제 HTTP 클라이언트 구현, base URL, timeout/retry/circuit breaker는 없다.
 - 현재 `UnconfiguredAiSearchClient`가 502를 발생시킨다.
 

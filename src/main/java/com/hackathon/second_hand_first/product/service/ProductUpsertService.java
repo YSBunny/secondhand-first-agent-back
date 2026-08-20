@@ -2,11 +2,17 @@ package com.hackathon.second_hand_first.product.service;
 
 import com.hackathon.second_hand_first.location.dto.response.GeographicCoordinates;
 import com.hackathon.second_hand_first.product.domain.Product;
+import com.hackathon.second_hand_first.product.domain.ProductDelivery;
 import com.hackathon.second_hand_first.product.domain.ProductTradeRegion;
+import com.hackathon.second_hand_first.product.domain.Platform;
+import com.hackathon.second_hand_first.product.domain.ProductCondition;
+import com.hackathon.second_hand_first.product.domain.TradeType;
 import com.hackathon.second_hand_first.product.repository.ProductRepository;
 import com.hackathon.second_hand_first.search.integration.ai.dto.AiLocationResponse;
 import com.hackathon.second_hand_first.search.integration.ai.dto.AiProductResponse;
 import com.hackathon.second_hand_first.search.integration.ai.dto.AiSellerResponse;
+import com.hackathon.second_hand_first.search.integration.ai.dto.AiDeliveryExtraCostResponse;
+import com.hackathon.second_hand_first.search.integration.ai.dto.AiDeliveryFeeResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -40,15 +46,15 @@ public class ProductUpsertService {
                         source.description(),
                         source.category(),
                         source.price(),
-                        source.referencePrice(),
+                        null,
                         source.condition(),
                         source.status(),
                         source.location() == null
                                 ? null
                                 : source.location().fullAddress(),
-                        source.directTradeAvailable(),
-                        source.shippingAvailable(),
-                        source.carbonReductionEligible(),
+                        source.supports(TradeType.DIRECT),
+                        source.supports(TradeType.DELIVERY),
+                        isCarbonReductionEligible(source.platform(), source.condition()),
                         source.platformUrl(),
                         source.externalViewCount(),
                         publishedAt,
@@ -60,15 +66,15 @@ public class ProductUpsertService {
                 source.description(),
                 source.category(),
                 source.price(),
-                source.referencePrice(),
+                null,
                 source.condition(),
                 source.status(),
                 source.location() == null
                         ? null
                         : source.location().fullAddress(),
-                source.directTradeAvailable(),
-                source.shippingAvailable(),
-                source.carbonReductionEligible(),
+                source.supports(TradeType.DIRECT),
+                source.supports(TradeType.DELIVERY),
+                isCarbonReductionEligible(source.platform(), source.condition()),
                 source.platformUrl(),
                 source.externalViewCount(),
                 publishedAt,
@@ -77,8 +83,49 @@ public class ProductUpsertService {
         updateCoordinates(product, source.location());
         product.replaceTradeRegions(toTradeRegions(source.location()));
         product.replaceImages(source.imageUrls());
+        updateDelivery(product, source.deliveryFee());
         updateSeller(product, source.seller(), refreshedAt);
         return productRepository.save(product);
+    }
+
+    private void updateDelivery(Product product, AiDeliveryFeeResponse source) {
+        if (source == null) {
+            product.replaceDelivery(null);
+            return;
+        }
+        if (source.status() == null) {
+            throw new IllegalArgumentException("AI 배송 응답의 상태가 누락되었습니다.");
+        }
+
+        AiDeliveryExtraCostResponse extraCost = source.extraCost();
+        ProductDelivery delivery = ProductDelivery.create(
+                product,
+                source.status(),
+                source.payer(),
+                source.minFee(),
+                source.homeDeliveryFee(),
+                extraCost == null ? null : extraCost.jejuFee(),
+                extraCost == null ? null : extraCost.remoteAreaFee(),
+                extraCost == null ? null : extraCost.description()
+        );
+
+        if (source.options() != null) {
+            for (int index = 0; index < source.options().size(); index++) {
+                var option = source.options().get(index);
+                if (option == null) {
+                    continue;
+                }
+                delivery.addOption(
+                        option.method(),
+                        option.carrier(),
+                        option.requiresPickupPoint(),
+                        option.fee(),
+                        option.rawCode() == null ? null : option.rawCode().toString(),
+                        index
+                );
+            }
+        }
+        product.replaceDelivery(delivery);
     }
 
     private List<ProductTradeRegion> toTradeRegions(AiLocationResponse location) {
@@ -136,12 +183,16 @@ public class ProductUpsertService {
                 || source.category() == null
                 || source.condition() == null
                 || source.status() == null
-                || source.directTradeAvailable() == null
-                || source.shippingAvailable() == null
-                || source.carbonReductionEligible() == null
-                || source.externalViewCount() == null) {
+                || source.tradeTypes() == null) {
             throw new IllegalArgumentException("AI 상품 응답의 필수 값이 누락되었습니다.");
         }
+    }
+
+    private boolean isCarbonReductionEligible(
+            Platform platform,
+            ProductCondition condition
+    ) {
+        return platform != Platform.ELEVENST || condition == ProductCondition.USED;
     }
 
     private int defaultZero(Integer value) {

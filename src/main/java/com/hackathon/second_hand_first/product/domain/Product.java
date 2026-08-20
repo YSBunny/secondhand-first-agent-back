@@ -112,8 +112,8 @@ public class Product {
     @Column(name = "platform_url", nullable = false, length = 1_000)
     private String platformUrl;
 
-    @Column(name = "external_view_count", nullable = false)
-    private long externalViewCount;
+    @Column(name = "external_view_count")
+    private Long externalViewCount;
 
     @Column(name = "published_at")
     private LocalDateTime publishedAt;
@@ -136,6 +136,9 @@ public class Product {
     @OneToOne(mappedBy = "product", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
     private SellerSnapshot sellerSnapshot;
 
+    @OneToOne(mappedBy = "product", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+    private ProductDelivery delivery;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -157,7 +160,7 @@ public class Product {
             boolean shippingAvailable,
             boolean carbonReductionEligible,
             String platformUrl,
-            long externalViewCount,
+            Long externalViewCount,
             LocalDateTime publishedAt,
             LocalDateTime lastRefreshedAt
     ) {
@@ -175,7 +178,7 @@ public class Product {
         this.shippingAvailable = shippingAvailable;
         this.carbonReductionEligible = carbonReductionEligible;
         this.platformUrl = requireText(platformUrl, "플랫폼 상품 URL은 필수입니다.", 1_000);
-        this.externalViewCount = requireNonNegative(externalViewCount, "조회수는 0 이상이어야 합니다.");
+        this.externalViewCount = requireNullableNonNegative(externalViewCount, "조회수는 0 이상이어야 합니다.");
         this.publishedAt = publishedAt;
         this.lastRefreshedAt = requireNonNull(lastRefreshedAt, "마지막 갱신 시각은 필수입니다.");
     }
@@ -195,7 +198,7 @@ public class Product {
             boolean shippingAvailable,
             boolean carbonReductionEligible,
             String platformUrl,
-            long externalViewCount,
+            Long externalViewCount,
             LocalDateTime publishedAt,
             LocalDateTime lastRefreshedAt
     ) {
@@ -310,6 +313,13 @@ public class Product {
         this.sellerSnapshot = null;
     }
 
+    public void replaceDelivery(ProductDelivery delivery) {
+        if (delivery != null && delivery.getProduct() != this) {
+            throw new IllegalArgumentException("다른 상품의 배송 정보를 연결할 수 없습니다.");
+        }
+        this.delivery = delivery;
+    }
+
     public void refresh(
             String title,
             String description,
@@ -323,7 +333,7 @@ public class Product {
             boolean shippingAvailable,
             boolean carbonReductionEligible,
             String platformUrl,
-            long externalViewCount,
+            Long externalViewCount,
             LocalDateTime publishedAt,
             LocalDateTime lastRefreshedAt
     ) {
@@ -339,7 +349,7 @@ public class Product {
         this.shippingAvailable = shippingAvailable;
         this.carbonReductionEligible = carbonReductionEligible;
         this.platformUrl = requireText(platformUrl, "플랫폼 상품 URL은 필수입니다.", 1_000);
-        this.externalViewCount = requireNonNegative(externalViewCount, "조회수는 0 이상이어야 합니다.");
+        this.externalViewCount = requireNullableNonNegative(externalViewCount, "조회수는 0 이상이어야 합니다.");
         this.publishedAt = publishedAt;
         this.lastRefreshedAt = requireNonNull(lastRefreshedAt, "마지막 갱신 시각은 필수입니다.");
     }

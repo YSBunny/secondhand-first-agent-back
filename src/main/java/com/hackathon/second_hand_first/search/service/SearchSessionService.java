@@ -9,6 +9,7 @@ import com.hackathon.second_hand_first.product.service.ProductUpsertService;
 import com.hackathon.second_hand_first.search.domain.SearchResult;
 import com.hackathon.second_hand_first.search.domain.SearchMessage;
 import com.hackathon.second_hand_first.search.domain.SearchSession;
+import com.hackathon.second_hand_first.search.domain.SearchMarketReference;
 import com.hackathon.second_hand_first.search.dto.request.SearchSessionCreateRequest;
 import com.hackathon.second_hand_first.search.dto.response.RecentSearchSessionResponse;
 import com.hackathon.second_hand_first.search.dto.response.SearchResultItemResponse;
@@ -38,6 +39,7 @@ import java.util.UUID;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.time.ZoneId;
 
 @Service
 @RequiredArgsConstructor
@@ -45,6 +47,7 @@ import java.util.Set;
 public class SearchSessionService {
 
     private static final int MAX_PAGE_SIZE = 100;
+    private static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");
 
     private final SearchSessionRepository searchSessionRepository;
     private final SearchResultRepository searchResultRepository;
@@ -61,16 +64,17 @@ public class SearchSessionService {
             SearchSessionCreateRequest request
     ) {
         String sessionId = generateSessionId();
+        String requestId = generateRequestId();
         AiSearchResponse aiResponse = aiSearchClient.search(
                 new AiSearchRequest(
                         request.query(),
-                        null,
+                        requestId,
                         sessionId,
                         null,
                         buildUserContext(userId)
                 )
         );
-        validateAiResponse(aiResponse);
+        validateAiResponse(aiResponse, requestId, sessionId);
         validateRecommendations(aiResponse.products());
 
         List<AiRecommendedProductResponse> enrichedProducts =
@@ -79,9 +83,13 @@ public class SearchSessionService {
                 );
 
         AiSearchResponse enrichedResponse = new AiSearchResponse(
+                aiResponse.requestId(),
+                aiResponse.sessionId(),
+                aiResponse.scoring(),
                 aiResponse.parsedConditions(),
                 aiResponse.assistantMessage(),
-                aiResponse.resultCount(),
+                aiResponse.marketReference(),
+                aiResponse.totalResultCount(),
                 enrichedProducts
         );
 
@@ -98,8 +106,10 @@ public class SearchSessionService {
                 analysis.maxPrice(),
                 analysis.priority(),
                 analysis.conditions(),
-                aiResponse.resultCount()
+                aiResponse.totalResultCount(),
+                aiResponse.scoring().version()
         );
+        attachMarketReference(session, aiResponse.marketReference());
         SearchSession saved = searchSessionRepository.save(session);
         searchMessageRepository.save(SearchMessage.create(
                 generateMessageId(),
@@ -160,7 +170,14 @@ public class SearchSessionService {
                     product,
                     recommendation.rank(),
                     recommendation.recommendationScore(),
-                    recommendation.recommendationReason()
+                    recommendation.recommendationReason(),
+                    recommendation.scoreBreakdown() == null
+                            ? null : recommendation.scoreBreakdown().priceScore(),
+                    recommendation.scoreBreakdown() == null
+                            ? null : recommendation.scoreBreakdown().qualityScore(),
+                    recommendation.scoreBreakdown() == null
+                            ? null : recommendation.scoreBreakdown().convenienceScore(),
+                    recommendation.distanceKm()
             ));
 
             CarbonSavingResult carbonSaving = carbonSavingService.calculate(
@@ -220,12 +237,23 @@ public class SearchSessionService {
         );
     }
 
-    private void validateAiResponse(AiSearchResponse response) {
+    private void validateAiResponse(
+            AiSearchResponse response,
+            String expectedRequestId,
+            String expectedSessionId
+    ) {
         if (response == null
+                || !expectedRequestId.equals(response.requestId())
+                || !expectedSessionId.equals(response.sessionId())
+                || response.scoring() == null
+                || response.scoring().version() == null
+                || response.scoring().version().isBlank()
                 || response.parsedConditions() == null
                 || response.assistantMessage() == null
                 || response.assistantMessage().isBlank()
-                || response.resultCount() < 0) {
+                || response.totalResultCount() < 0
+                || response.products() == null
+                || response.totalResultCount() != response.products().size()) {
             throw new IllegalArgumentException("AI 검색 응답이 올바르지 않습니다.");
         }
     }
@@ -237,23 +265,73 @@ public class SearchSessionService {
 
         Set<Integer> ranks = new HashSet<>();
         Set<String> productKeys = new HashSet<>();
-        for (AiRecommendedProductResponse recommendation : recommendations) {
+        Double previousScore = null;
+        int elevenstCount = 0;
+        for (int index = 0; index < recommendations.size(); index++) {
+            AiRecommendedProductResponse recommendation = recommendations.get(index);
             if (recommendation == null || recommendation.product() == null) {
                 throw new IllegalArgumentException("AI 추천 상품 응답이 올바르지 않습니다.");
+            }
+            if (recommendation.rank() != index + 1) {
+                throw new IllegalArgumentException("AI 추천 순위는 1부터 연속된 오름차순이어야 합니다.");
             }
             if (!ranks.add(recommendation.rank())) {
                 throw new IllegalArgumentException("AI 추천 순위가 중복되었습니다.");
             }
+            Double score = recommendation.recommendationScore();
+            if (score == null || score < 0 || score > 100) {
+                throw new IllegalArgumentException("AI 추천 점수는 0에서 100 사이여야 합니다.");
+            }
+            if (previousScore != null && score > previousScore) {
+                throw new IllegalArgumentException("AI 추천 순위와 점수 순서가 일치하지 않습니다.");
+            }
+            previousScore = score;
             String productKey = recommendation.product().platform()
                     + ":" + recommendation.product().externalProductId();
             if (!productKeys.add(productKey)) {
                 throw new IllegalArgumentException("AI 추천 상품이 중복되었습니다.");
             }
+            if (recommendation.product().platform() == com.hackathon.second_hand_first.product.domain.Platform.ELEVENST) {
+                elevenstCount++;
+                if (elevenstCount > 1) {
+                    throw new IllegalArgumentException("11번가 인기 신품은 하나만 포함할 수 있습니다.");
+                }
+            }
         }
+    }
+
+    private void attachMarketReference(
+            SearchSession session,
+            com.hackathon.second_hand_first.search.integration.ai.dto.AiMarketReferenceResponse source
+    ) {
+        if (source == null) {
+            session.replaceMarketReference(null);
+            return;
+        }
+        if (source.medianPrice() == null
+                || source.sampleCount() == null
+                || source.calculatedAt() == null) {
+            throw new IllegalArgumentException("AI 시세 기준 응답의 필수 값이 누락되었습니다.");
+        }
+        session.replaceMarketReference(SearchMarketReference.create(
+                session,
+                source.productName(),
+                source.sourcePlatform(),
+                source.sourceName(),
+                source.referenceType(),
+                source.medianPrice(),
+                source.sampleCount(),
+                source.calculatedAt().atZoneSameInstant(SEOUL).toLocalDateTime(),
+                source.sourceUrl()
+        ));
     }
 
     private String generateSessionId() {
         return "ss_" + UUID.randomUUID().toString().replace("-", "");
+    }
+
+    private String generateRequestId() {
+        return "req_" + UUID.randomUUID().toString().replace("-", "");
     }
 
     private String generateMessageId() {

@@ -4,6 +4,8 @@ public record AiRecommendedProductResponse(
         int rank,
         Double recommendationScore,
         String recommendationReason,
+        AiScoreBreakdownResponse scoreBreakdown,
+        Double distanceKm,
         AiProductResponse product
 ) {
 }
