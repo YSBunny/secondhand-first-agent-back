@@ -106,6 +106,7 @@ class ProductUpsertServiceTest {
                 ),
                 true,
                 true,
+                null,
                 true,
                 "https://fleamarket.naver.com/products/" + externalProductId,
                 150L,

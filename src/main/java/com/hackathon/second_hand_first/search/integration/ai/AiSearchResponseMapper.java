@@ -226,6 +226,7 @@ public final class AiSearchResponseMapper {
                 locationOf(item),
                 tradeMethod.contains(TRADE_MEET),
                 tradeMethod.contains(TRADE_PARCEL),
+                item.deliveryFee(),
                 isCarbonReductionEligible(item),
                 item.url(),
                 UNKNOWN_VIEW_COUNT,
