@@ -155,13 +155,46 @@ class AiSearchResponseMapperTest {
             AiProductResponse product = recommendation.product();
             assertThat(product.platform()).isNotNull();
             assertThat(product.price()).isNotNull();
-            assertThat(product.category()).isEqualTo(ProductCategory.OTHER);
+            assertThat(product.category()).isNotNull();
             assertThat(product.condition()).isNotNull();
             assertThat(product.status()).isEqualTo(ProductStatus.SELLING);
             assertThat(product.directTradeAvailable()).isNotNull();
             assertThat(product.shippingAvailable()).isNotNull();
             assertThat(product.carbonReductionEligible()).isNotNull();
             assertThat(product.externalViewCount()).isNotNull();
+        }
+    }
+
+    @Test
+    @DisplayName("AI가 추론한 카테고리를 그대로 쓴다")
+    void usesInferredCategory() throws Exception {
+        var graph = objectMapper.readValue("""
+                {"request_id":"r","query_parsed":{"product":"원목 책상","used_allowed":true,
+                                                  "category":"FURNITURE"},
+                 "items":[{"platform":"BUNJANG","platform_product_id":"1","price":50000,
+                           "condition_level":"USED","trade_method":["MEET"]}],
+                 "top_recommendation_ids":["BUNJANG:1"]}
+                """, AiGraphSearchResponse.class);
+        assertThat(AiSearchResponseMapper.toSearchResponse(graph)
+                .products().get(0).product().category())
+                .isEqualTo(ProductCategory.FURNITURE);
+    }
+
+    @Test
+    @DisplayName("카테고리를 추론하지 못했거나 모르는 값이면 OTHER 로 둔다")
+    void fallsBackToOtherCategory() throws Exception {
+        for (String value : new String[] {"null", "\"\"", "\"NOT_A_CATEGORY\""}) {
+            var graph = objectMapper.readValue("""
+                    {"request_id":"r","query_parsed":{"product":"x","used_allowed":true,
+                                                      "category":%s},
+                     "items":[{"platform":"BUNJANG","platform_product_id":"1","price":1000,
+                               "condition_level":"USED","trade_method":["MEET"]}],
+                     "top_recommendation_ids":["BUNJANG:1"]}
+                    """.formatted(value), AiGraphSearchResponse.class);
+            // 임의로 가까운 카테고리에 밀어 넣으면 탄소 계산이 엉뚱한 ISIC4 를 쓴다.
+            assertThat(AiSearchResponseMapper.toSearchResponse(graph)
+                    .products().get(0).product().category())
+                    .isEqualTo(ProductCategory.OTHER);
         }
     }
 

@@ -15,6 +15,9 @@ public record AiGraphQueryParsed(
         String purpose,
         String spec,
         @JsonProperty("used_allowed")
-        Boolean usedAllowed
+        Boolean usedAllowed,
+        // AI가 사용자 요청에서 추론한 카테고리. 확실하지 않으면 null 로 온다.
+        // ProductCategory 이름과 같은 문자열이다.
+        String category
 ) {
 }
