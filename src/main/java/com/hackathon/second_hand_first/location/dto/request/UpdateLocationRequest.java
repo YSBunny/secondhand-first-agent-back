@@ -4,6 +4,6 @@ import jakarta.validation.constraints.NotBlank;
 
 public record UpdateLocationRequest(
         @NotBlank(message = "지역은 필수입니다.")
-        String region
+        String address
 ) {
 }

@@ -25,7 +25,7 @@ public class LocationController {
     ) {
         CoordinateResponse response = locationService.updateLocation(
                 userDetails.getUserId(),
-                request.region()
+                request.address()
         );
 
         return ResponseEntity.ok(
