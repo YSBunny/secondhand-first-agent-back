@@ -1,6 +1,7 @@
 package com.hackathon.second_hand_first.location.service;
 
 import com.hackathon.second_hand_first.location.dto.response.CoordinateResponse;
+import com.hackathon.second_hand_first.location.dto.response.GeographicCoordinates;
 import com.hackathon.second_hand_first.location.dto.response.KakaoAddressResponse;
 import com.hackathon.second_hand_first.location.dto.response.LocationCandidateResponse;
 import com.hackathon.second_hand_first.location.exception.KakaoLocalException;
@@ -12,6 +13,7 @@ import org.springframework.web.client.RestClientResponseException;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -91,6 +93,45 @@ public class KakaoLocalService {
         );
     }
 
+    public Optional<GeographicCoordinates> findCoordinates(String fullAddress) {
+        String normalizedAddress = normalizeRequiredValue(
+                fullAddress,
+                "전체 주소는 필수입니다."
+        );
+        validateMaxLength(
+                normalizedAddress,
+                MAX_QUERY_LENGTH,
+                "전체 주소는 100자 이하여야 합니다."
+        );
+
+        Optional<GeographicCoordinates> coordinates =
+                findFirstCoordinates(normalizedAddress);
+        if (coordinates.isPresent()) {
+            return coordinates;
+        }
+
+        String fallbackAddress = normalizeAdministrativeDong(normalizedAddress);
+        if (fallbackAddress.equals(normalizedAddress)) {
+            return Optional.empty();
+        }
+        return findFirstCoordinates(fallbackAddress);
+    }
+
+    private Optional<GeographicCoordinates> findFirstCoordinates(String address) {
+        KakaoAddressResponse response = requestAddressSearch(address, 1);
+        if (response == null || response.documents() == null) {
+            return Optional.empty();
+        }
+
+        return response.documents().stream()
+                .filter(this::hasValidCoordinates)
+                .findFirst()
+                .map(document -> new GeographicCoordinates(
+                        parseCoordinate(document.y()),
+                        parseCoordinate(document.x())
+                ));
+    }
+
     private KakaoAddressResponse requestAddressSearch(String query, int size) {
         try {
             return restClient.get()
@@ -120,6 +161,29 @@ public class KakaoLocalService {
                 && document.address() != null
                 && document.address().regionCode() != null
                 && !document.address().regionCode().isBlank();
+    }
+
+    private boolean hasValidCoordinates(KakaoAddressResponse.Document document) {
+        return document != null
+                && document.x() != null
+                && !document.x().isBlank()
+                && document.y() != null
+                && !document.y().isBlank();
+    }
+
+    private double parseCoordinate(String value) {
+        try {
+            return Double.parseDouble(value);
+        } catch (NumberFormatException exception) {
+            throw new KakaoLocalException(
+                    HttpStatus.BAD_GATEWAY,
+                    "주소 검색 서비스에서 올바르지 않은 좌표를 받았습니다."
+            );
+        }
+    }
+
+    private String normalizeAdministrativeDong(String address) {
+        return address.replaceFirst("제?\\d+(?=동$)", "");
     }
 
     private LocationCandidateResponse toCandidate(
