@@ -11,6 +11,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -69,6 +70,27 @@ class ProductLocationGeocodeServiceTest {
         assertThat(response.coordinates()).isNull();
     }
 
+    @Test
+    void geocodesDuplicateMainAndRegionAddressOnlyOnce() {
+        ProductLocationGeocodeRequest request = request(
+                "서창동",
+                "인천광역시  남동구 서창동 ",
+                ProductLocationGeocodeRequest.Precision.FULL
+        );
+        GeographicCoordinates coordinates =
+                new GeographicCoordinates(37.435, 126.750);
+        when(kakaoLocalService.findCoordinates("인천광역시 남동구 서창동"))
+                .thenReturn(Optional.of(coordinates));
+
+        ProductLocationGeocodeResponse response = service.geocode(request);
+
+        assertThat(response.coordinates()).isEqualTo(coordinates);
+        assertThat(response.regions().getFirst().coordinates())
+                .isEqualTo(coordinates);
+        verify(kakaoLocalService, times(1))
+                .findCoordinates("인천광역시 남동구 서창동");
+    }
+
     private ProductLocationGeocodeRequest request(
             String name,
             String fullAddress,
@@ -80,6 +102,7 @@ class ProductLocationGeocodeServiceTest {
                         : List.of(new ProductLocationGeocodeRequest.Region(
                                 name,
                                 fullAddress,
+                                null,
                                 null
                         ));
         return new ProductLocationGeocodeRequest(

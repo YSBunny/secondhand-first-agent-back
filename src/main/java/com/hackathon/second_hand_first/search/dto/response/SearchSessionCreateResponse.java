@@ -22,7 +22,9 @@ public record SearchSessionCreateResponse(
         return new SearchSessionCreateResponse(
                 session.getSessionId(),
                 session.getStatus(),
-                ParsedConditionsResponse.from(aiResponse.parsedConditions()),
+                ParsedConditionsResponse.from(
+                        aiResponse.parsedConditions()
+                ),
                 aiResponse.assistantMessage(),
                 aiResponse.resultCount(),
                 recommendations
