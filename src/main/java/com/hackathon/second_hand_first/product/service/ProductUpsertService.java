@@ -1,0 +1,107 @@
+package com.hackathon.second_hand_first.product.service;
+
+import com.hackathon.second_hand_first.product.domain.Product;
+import com.hackathon.second_hand_first.product.repository.ProductRepository;
+import com.hackathon.second_hand_first.search.integration.ai.dto.AiProductResponse;
+import com.hackathon.second_hand_first.search.integration.ai.dto.AiSellerResponse;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+
+@Service
+@RequiredArgsConstructor
+public class ProductUpsertService {
+
+    private static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");
+
+    private final ProductRepository productRepository;
+
+    @Transactional
+    public Product upsert(AiProductResponse source) {
+        validateRequiredFields(source);
+        LocalDateTime refreshedAt = LocalDateTime.now(SEOUL);
+        LocalDateTime publishedAt = source.publishedAt() == null
+                ? null
+                : source.publishedAt().atZoneSameInstant(SEOUL).toLocalDateTime();
+
+        Product product = productRepository
+                .findByPlatformAndExternalProductId(source.platform(), source.externalProductId())
+                .orElseGet(() -> Product.create(
+                        source.platform(),
+                        source.externalProductId(),
+                        source.title(),
+                        source.description(),
+                        source.category(),
+                        source.price(),
+                        source.referencePrice(),
+                        source.condition(),
+                        source.status(),
+                        source.location(),
+                        source.directTradeAvailable(),
+                        source.shippingAvailable(),
+                        source.carbonReductionEligible(),
+                        source.platformUrl(),
+                        source.externalViewCount(),
+                        publishedAt,
+                        refreshedAt
+                ));
+
+        product.refresh(
+                source.title(),
+                source.description(),
+                source.category(),
+                source.price(),
+                source.referencePrice(),
+                source.condition(),
+                source.status(),
+                source.location(),
+                source.directTradeAvailable(),
+                source.shippingAvailable(),
+                source.carbonReductionEligible(),
+                source.platformUrl(),
+                source.externalViewCount(),
+                publishedAt,
+                refreshedAt
+        );
+        product.replaceImages(source.imageUrls());
+        updateSeller(product, source.seller(), refreshedAt);
+        return productRepository.save(product);
+    }
+
+    private void updateSeller(Product product, AiSellerResponse seller, LocalDateTime capturedAt) {
+        if (seller == null) {
+            product.clearSellerSnapshot();
+            return;
+        }
+        product.updateSellerSnapshot(
+                seller.externalSellerId(),
+                seller.name(),
+                defaultZero(seller.trustScore()),
+                defaultZero(seller.tradeCount()),
+                seller.mannerTemperature(),
+                capturedAt
+        );
+    }
+
+    private void validateRequiredFields(AiProductResponse source) {
+        if (source == null
+                || source.platform() == null
+                || source.price() == null
+                || source.category() == null
+                || source.condition() == null
+                || source.status() == null
+                || source.directTradeAvailable() == null
+                || source.shippingAvailable() == null
+                || source.carbonReductionEligible() == null
+                || source.externalViewCount() == null) {
+            throw new IllegalArgumentException("AI 상품 응답의 필수 값이 누락되었습니다.");
+        }
+    }
+
+    private int defaultZero(Integer value) {
+        return value == null ? 0 : value;
+    }
+}

@@ -1,0 +1,15 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb;MODE=MySQL;DB_CLOSE_DELAY=-1
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+
+app:
+  auth:
+    jwt-secret: second-hand-first-test-secret
+
+kakao:
+  local:
+    base-url: http://localhost
+    rest-api-key: test-key
