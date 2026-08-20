@@ -60,7 +60,6 @@ class ProductServiceTest {
         assertThat(response.tradeTypes()).containsExactlyInAnyOrder("DIRECT", "DELIVERY");
         assertThat(response.seller().tradeCount()).isEqualTo(32);
         assertThat(response.seller().temperature()).isEqualTo(92.0);
-        assertThat(response.isFavorite()).isFalse();
         assertThat(response.distanceKm()).isNull();
         assertThat(response.rank()).isNull();
     }

@@ -134,8 +134,7 @@ public class BestDealService {
                 product.getLocation() == null ? "지역 정보 없음" : product.getLocation(),
                 recommendationReason(product),
                 scored.score(),
-                imageUrl,
-                false
+                imageUrl
         );
     }
 
