@@ -47,6 +47,9 @@ application-secret.yml
 application-secret.yaml
 application-secret.properties
 
+# 이전 로컬 H2 파일
+data/
+
 # 로컬에서 생성되는 업로드 파일
 uploads/
 files/
