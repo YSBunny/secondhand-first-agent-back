@@ -4,6 +4,8 @@ import com.hackathon.second_hand_first.activity.domain.PlatformRedirectHistory;
 import com.hackathon.second_hand_first.activity.dto.PlatformRedirectResponse;
 import com.hackathon.second_hand_first.activity.exception.RedirectForbiddenException;
 import com.hackathon.second_hand_first.activity.repository.PlatformRedirectHistoryRepository;
+import com.hackathon.second_hand_first.product.domain.DeliveryFee;
+import com.hackathon.second_hand_first.product.domain.DeliveryPayer;
 import com.hackathon.second_hand_first.product.domain.Platform;
 import com.hackathon.second_hand_first.product.domain.Product;
 import com.hackathon.second_hand_first.product.domain.ProductCategory;
@@ -84,6 +86,7 @@ class PlatformRedirectServiceTest {
                 null,
                 true,
                 false,
+                DeliveryFee.of(3_000L, 3_000L, DeliveryPayer.BUYER),
                 true,
                 "https://evil.example.com/product/1",
                 0L,

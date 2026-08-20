@@ -18,7 +18,6 @@ public record BestDealItemResponse(
         String location,
         String recommendationReason,
         int recommendationScore,
-        String imageUrl,
-        boolean isFavorite
+        String imageUrl
 ) {
 }

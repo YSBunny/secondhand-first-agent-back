@@ -28,7 +28,6 @@ public record ProductDetailResponse(
         Integer rank,
         String recommendationReason,
         String externalUrl,
-        boolean isFavorite,
         boolean changedSinceLastViewed,
         OffsetDateTime updatedAt
 ) {
