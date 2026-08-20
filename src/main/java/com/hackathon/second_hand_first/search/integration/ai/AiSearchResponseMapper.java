@@ -4,8 +4,11 @@ import com.hackathon.second_hand_first.product.domain.Platform;
 import com.hackathon.second_hand_first.product.domain.ProductCategory;
 import com.hackathon.second_hand_first.product.domain.ProductCondition;
 import com.hackathon.second_hand_first.product.domain.ProductStatus;
+import com.hackathon.second_hand_first.location.dto.request.ProductLocationGeocodeRequest;
 import com.hackathon.second_hand_first.search.domain.SearchPriority;
 import com.hackathon.second_hand_first.search.integration.ai.dto.AiGraphItem;
+import com.hackathon.second_hand_first.search.integration.ai.dto.AiLocationResponse;
+import com.hackathon.second_hand_first.search.integration.ai.dto.AiRegionResponse;
 import com.hackathon.second_hand_first.search.integration.ai.dto.AiGraphQueryParsed;
 import com.hackathon.second_hand_first.search.integration.ai.dto.AiGraphSearchResponse;
 import com.hackathon.second_hand_first.search.integration.ai.dto.AiParsedConditionsResponse;
@@ -214,15 +217,50 @@ public final class AiSearchResponseMapper {
         );
     }
 
-    private static String locationOf(AiGraphItem item) {
-        if (item.location() == null) {
+    /**
+     * 위치를 그대로 옮긴다.
+     *
+     * <p>좌표는 채우지 않는다. 크롤러는 행정동 텍스트만 주고 지오코딩은
+     * 백엔드가 따로 한다. 여기서 null 이 아닌 값을 지어내면 안 된다.
+     *
+     * <p>regions 를 함께 옮기는 것이 중요하다. 거래 가능 지역이 여러 곳인
+     * 매물이 있고(N플리마켓 최대 3곳), 거리 계산은 그중 가장 가까운 곳을 쓴다.
+     * 대표 주소만 넘기면 판매자에게 불리하게 계산된다.
+     */
+    private static AiLocationResponse locationOf(AiGraphItem item) {
+        AiGraphItem.AiGraphLocation location = item.location();
+        if (location == null) {
             return null;
         }
-        // 지오코딩에 쓰는 값은 full_address 다. name 은 표시용이라
-        // N플리마켓의 경우 동 이름만 들어 있다.
-        return item.location().fullAddress() != null
-                ? item.location().fullAddress()
-                : item.location().name();
+        return new AiLocationResponse(
+                location.name(),
+                location.fullAddress(),
+                parsePrecision(location.precision()),
+                toRegions(location.regions()),
+                null
+        );
+    }
+
+    private static ProductLocationGeocodeRequest.Precision parsePrecision(String value) {
+        if (value == null) {
+            return null;
+        }
+        try {
+            return ProductLocationGeocodeRequest.Precision.valueOf(value);
+        } catch (IllegalArgumentException exception) {
+            // 크롤러가 새 값을 내보내기 시작한 것이다. 임의로 매핑하지 않는다.
+            return null;
+        }
+    }
+
+    private static List<AiRegionResponse> toRegions(List<AiGraphItem.AiGraphRegion> regions) {
+        if (regions == null) {
+            return List.of();
+        }
+        return regions.stream()
+                .map(region -> new AiRegionResponse(
+                        region.name(), region.fullAddress(), region.code(), null))
+                .toList();
     }
 
     /**

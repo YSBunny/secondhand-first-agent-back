@@ -119,10 +119,33 @@ class AiSearchResponseMapperTest {
     }
 
     @Test
-    @DisplayName("위치는 표시용 name 이 아니라 full_address 를 쓴다")
-    void usesFullAddress() throws Exception {
-        assertThat(map().products().get(0).product().location())
-                .isEqualTo("서울특별시 마포구 상암동");
+    @DisplayName("위치를 객체 그대로 옮기고 좌표는 비워 둔다")
+    void mapsLocation() throws Exception {
+        var location = map().products().get(0).product().location();
+        assertThat(location.fullAddress()).isEqualTo("서울특별시 마포구 상암동");
+        assertThat(location.name()).isEqualTo("상암동");
+        // 지오코딩은 백엔드가 따로 한다. 여기서 좌표를 지어내면 안 된다.
+        assertThat(location.coordinates()).isNull();
+    }
+
+    @Test
+    @DisplayName("거래 가능 지역이 여러 곳이면 전부 옮긴다")
+    void keepsAllRegions() throws Exception {
+        var graph = objectMapper.readValue("""
+                {"request_id":"r","query_parsed":{"product":"x","used_allowed":true},
+                 "items":[{"platform":"NAVER_FLEAMARKET","platform_product_id":"1","price":1000,
+                           "condition_level":"USED","trade_method":["MEET"],
+                           "location":{"name":"남천동","full_address":"부산광역시 수영구 남천동",
+                                       "precision":"FULL",
+                                       "regions":[{"name":"남천동","full_address":"부산광역시 수영구 남천동"},
+                                                  {"name":"광안동","full_address":"부산광역시 수영구 광안동"}]}}],
+                 "top_recommendation_ids":["NAVER_FLEAMARKET:1"]}
+                """, AiGraphSearchResponse.class);
+        var location = AiSearchResponseMapper.toSearchResponse(graph)
+                .products().get(0).product().location();
+        // 거리 계산이 가장 가까운 곳을 고르므로 하나만 넘기면 판매자에게 불리하다.
+        assertThat(location.regions()).hasSize(2);
+        assertThat(location.regions().get(1).fullAddress()).isEqualTo("부산광역시 수영구 광안동");
     }
 
     @Test

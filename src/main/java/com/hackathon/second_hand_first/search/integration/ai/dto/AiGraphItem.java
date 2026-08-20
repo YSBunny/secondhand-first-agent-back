@@ -45,7 +45,18 @@ public record AiGraphItem(
             String name,
             @JsonProperty("full_address")
             String fullAddress,
-            String precision
+            String precision,
+            List<AiGraphRegion> regions
+    ) {
+    }
+
+    /** 거래 가능 지역. N플리마켓은 최대 3곳까지 온다. */
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record AiGraphRegion(
+            String name,
+            @JsonProperty("full_address")
+            String fullAddress,
+            String code
     ) {
     }
 
