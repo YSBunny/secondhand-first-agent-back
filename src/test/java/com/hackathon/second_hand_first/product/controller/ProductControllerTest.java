@@ -42,7 +42,7 @@ class ProductControllerTest {
                 "설명", null, null, List.of("DIRECT"), "판교",
                 null, 128L, new ProductDetailResponse.SellerInfo(32, 92.0),
                 null, null, "https://fleamarket.naver.com/articles/mock_1",
-                false, false, OffsetDateTime.now()
+                false, OffsetDateTime.now()
         );
         when(productService.getProductDetail(1L)).thenReturn(detail);
 

@@ -1,5 +1,7 @@
 package com.hackathon.second_hand_first.product.support;
 
+import com.hackathon.second_hand_first.product.domain.DeliveryFee;
+import com.hackathon.second_hand_first.product.domain.DeliveryPayer;
 import com.hackathon.second_hand_first.product.domain.Platform;
 import com.hackathon.second_hand_first.product.domain.Product;
 import com.hackathon.second_hand_first.product.domain.ProductCategory;
@@ -30,6 +32,7 @@ public final class ProductFixture {
                 "판교",
                 true,
                 true,
+                DeliveryFee.of(3_000L, 3_000L, DeliveryPayer.BUYER),
                 true,
                 "https://fleamarket.naver.com/products/mock_1",
                 128L,

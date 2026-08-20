@@ -110,7 +110,6 @@ public class ProductService {
                 null,       // rank: AI 검색 결과 연동 전 null
                 null,       // recommendationReason: AI 연동 전 null
                 product.getPlatformUrl(),
-                false,      // isFavorite: 즐겨찾기 기능 미구현
                 false,      // changedSinceLastViewed: refresh 연동 전 false
                 updatedAt
         );

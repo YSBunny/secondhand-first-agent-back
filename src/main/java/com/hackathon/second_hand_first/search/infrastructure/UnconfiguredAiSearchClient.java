@@ -4,12 +4,13 @@ import com.hackathon.second_hand_first.search.application.AiSearchClient;
 import com.hackathon.second_hand_first.search.exception.AiServerUnavailableException;
 import com.hackathon.second_hand_first.search.integration.ai.dto.AiSearchRequest;
 import com.hackathon.second_hand_first.search.integration.ai.dto.AiSearchResponse;
-import org.springframework.stereotype.Component;
 
 /**
- * AI 서버 연동 명세가 연결되기 전까지 임의의 분석 결과를 만들지 않습니다.
+ * AI 서버 주소가 없을 때 쓰는 구현.
+ *
+ * <p>주소를 모르는 상태에서 임의의 분석 결과를 만들지 않는다. 502를 주고 끝낸다.
+ * 등록 조건은 AiSearchClientConfig 에 있다.
  */
-@Component
 public class UnconfiguredAiSearchClient implements AiSearchClient {
 
     @Override

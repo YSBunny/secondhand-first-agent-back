@@ -2,6 +2,7 @@ package com.hackathon.second_hand_first.product.domain;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
+import jakarta.persistence.Embedded;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
@@ -106,6 +107,10 @@ public class Product {
     @Column(name = "shipping_available", nullable = false)
     private boolean shippingAvailable;
 
+    /** 구매자가 낼 배송비. 총 지불액 비교에 쓴다. */
+    @Embedded
+    private DeliveryFee deliveryFee = DeliveryFee.unavailable();
+
     @Column(name = "carbon_reduction_eligible", nullable = false)
     private boolean carbonReductionEligible;
 
@@ -155,6 +160,7 @@ public class Product {
             String location,
             boolean directTradeAvailable,
             boolean shippingAvailable,
+            DeliveryFee deliveryFee,
             boolean carbonReductionEligible,
             String platformUrl,
             long externalViewCount,
@@ -173,6 +179,8 @@ public class Product {
         this.location = normalizeNullableText(location);
         this.directTradeAvailable = directTradeAvailable;
         this.shippingAvailable = shippingAvailable;
+        // 값 객체라 통째로 갈아 끼운다. null 이면 택배 불가로 본다.
+        this.deliveryFee = deliveryFee == null ? DeliveryFee.unavailable() : deliveryFee;
         this.carbonReductionEligible = carbonReductionEligible;
         this.platformUrl = requireText(platformUrl, "플랫폼 상품 URL은 필수입니다.", 1_000);
         this.externalViewCount = requireNonNegative(externalViewCount, "조회수는 0 이상이어야 합니다.");
@@ -193,6 +201,7 @@ public class Product {
             String location,
             boolean directTradeAvailable,
             boolean shippingAvailable,
+            DeliveryFee deliveryFee,
             boolean carbonReductionEligible,
             String platformUrl,
             long externalViewCount,
@@ -212,6 +221,7 @@ public class Product {
                 location,
                 directTradeAvailable,
                 shippingAvailable,
+                deliveryFee,
                 carbonReductionEligible,
                 platformUrl,
                 externalViewCount,
@@ -321,6 +331,7 @@ public class Product {
             String location,
             boolean directTradeAvailable,
             boolean shippingAvailable,
+            DeliveryFee deliveryFee,
             boolean carbonReductionEligible,
             String platformUrl,
             long externalViewCount,
@@ -337,6 +348,8 @@ public class Product {
         this.location = normalizeNullableText(location);
         this.directTradeAvailable = directTradeAvailable;
         this.shippingAvailable = shippingAvailable;
+        // 값 객체라 통째로 갈아 끼운다. null 이면 택배 불가로 본다.
+        this.deliveryFee = deliveryFee == null ? DeliveryFee.unavailable() : deliveryFee;
         this.carbonReductionEligible = carbonReductionEligible;
         this.platformUrl = requireText(platformUrl, "플랫폼 상품 URL은 필수입니다.", 1_000);
         this.externalViewCount = requireNonNegative(externalViewCount, "조회수는 0 이상이어야 합니다.");
