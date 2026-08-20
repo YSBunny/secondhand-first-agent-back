@@ -1,5 +1,6 @@
 package com.hackathon.second_hand_first.user.service;
 
+import com.hackathon.second_hand_first.auth.token.RefreshTokenService;
 import com.hackathon.second_hand_first.location.dto.response.CoordinateResponse;
 import com.hackathon.second_hand_first.user.domain.User;
 import com.hackathon.second_hand_first.user.dto.request.UserProfileUpdateRequest;
@@ -14,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class UserService {
     private final UserRepository userRepository;
+    private final RefreshTokenService refreshTokenService;
 
     public UserProfileResponse getProfile(Long userId) {
         return toResponse(findUser(userId));
@@ -24,6 +26,13 @@ public class UserService {
         User user = findUser(userId);
         user.updateProfile(request.name(), request.profileImageUrl());
         return toResponse(user);
+    }
+
+    @Transactional
+    public void deleteAccount(Long userId) {
+        User user = findUser(userId);
+        refreshTokenService.deleteByUserId(userId);
+        userRepository.delete(user);
     }
 
     private User findUser(Long userId) {
