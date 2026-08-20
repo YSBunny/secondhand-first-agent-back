@@ -61,6 +61,18 @@ public class SearchResult {
     @Column(name = "recommendation_reason", length = 1_000)
     private String recommendationReason;
 
+    @Column(name = "price_score")
+    private Double priceScore;
+
+    @Column(name = "quality_score")
+    private Double qualityScore;
+
+    @Column(name = "convenience_score")
+    private Double convenienceScore;
+
+    @Column(name = "distance_km")
+    private Double distanceKm;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -69,7 +81,11 @@ public class SearchResult {
             Product product,
             int rank,
             Double recommendationScore,
-            String recommendationReason
+            String recommendationReason,
+            Double priceScore,
+            Double qualityScore,
+            Double convenienceScore,
+            Double distanceKm
     ) {
         if (searchSession == null) {
             throw new IllegalArgumentException("검색 세션은 필수입니다.");
@@ -80,14 +96,22 @@ public class SearchResult {
         if (rank < 1) {
             throw new IllegalArgumentException("추천 순위는 1 이상이어야 합니다.");
         }
-        if (recommendationScore != null && recommendationScore < 0) {
-            throw new IllegalArgumentException("추천 점수는 0 이상이어야 합니다.");
+        validateScore(recommendationScore, "추천 점수");
+        validateScore(priceScore, "가격 점수");
+        validateScore(qualityScore, "품질 점수");
+        validateScore(convenienceScore, "편의성 점수");
+        if (distanceKm != null && distanceKm < 0) {
+            throw new IllegalArgumentException("거리는 0 이상이어야 합니다.");
         }
         this.searchSession = searchSession;
         this.product = product;
         this.rank = rank;
         this.recommendationScore = recommendationScore;
         this.recommendationReason = normalizeNullableText(recommendationReason, 1_000);
+        this.priceScore = priceScore;
+        this.qualityScore = qualityScore;
+        this.convenienceScore = convenienceScore;
+        this.distanceKm = distanceKm;
     }
 
     public static SearchResult create(
@@ -97,13 +121,47 @@ public class SearchResult {
             Double recommendationScore,
             String recommendationReason
     ) {
+        return create(
+                searchSession,
+                product,
+                rank,
+                recommendationScore,
+                recommendationReason,
+                null,
+                null,
+                null,
+                null
+        );
+    }
+
+    public static SearchResult create(
+            SearchSession searchSession,
+            Product product,
+            int rank,
+            Double recommendationScore,
+            String recommendationReason,
+            Double priceScore,
+            Double qualityScore,
+            Double convenienceScore,
+            Double distanceKm
+    ) {
         return new SearchResult(
                 searchSession,
                 product,
                 rank,
                 recommendationScore,
-                recommendationReason
+                recommendationReason,
+                priceScore,
+                qualityScore,
+                convenienceScore,
+                distanceKm
         );
+    }
+
+    private static void validateScore(Double score, String fieldName) {
+        if (score != null && (score < 0 || score > 100)) {
+            throw new IllegalArgumentException(fieldName + "는 0에서 100 사이여야 합니다.");
+        }
     }
 
     @PrePersist

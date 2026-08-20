@@ -2,8 +2,6 @@ package com.hackathon.second_hand_first.search.infrastructure;
 
 import com.hackathon.second_hand_first.search.application.AiSearchClient;
 import com.hackathon.second_hand_first.search.exception.AiServerUnavailableException;
-import com.hackathon.second_hand_first.search.integration.ai.AiSearchResponseMapper;
-import com.hackathon.second_hand_first.search.integration.ai.dto.AiGraphSearchResponse;
 import com.hackathon.second_hand_first.search.integration.ai.dto.AiSearchRequest;
 import com.hackathon.second_hand_first.search.integration.ai.dto.AiSearchResponse;
 import lombok.RequiredArgsConstructor;
@@ -31,13 +29,13 @@ public class HttpAiSearchClient implements AiSearchClient {
     @Override
     public AiSearchResponse search(AiSearchRequest request) {
         long start = System.currentTimeMillis();
-        AiGraphSearchResponse graph;
+        AiSearchResponse response;
         try {
-            graph = aiRestClient.post()
+            response = aiRestClient.post()
                     .uri(SEARCH_PATH)
                     .body(request)
                     .retrieve()
-                    .body(AiGraphSearchResponse.class);
+                    .body(AiSearchResponse.class);
         } catch (RestClientException exception) {
             // 타임아웃·연결 실패·4xx·5xx 를 모두 여기서 받는다.
             log.warn("AI 검색 호출 실패 sessionId={} 원인={}",
@@ -45,15 +43,15 @@ public class HttpAiSearchClient implements AiSearchClient {
             throw new AiServerUnavailableException("AI 서버 호출에 실패했습니다.");
         }
 
-        if (graph == null) {
+        if (response == null) {
             throw new AiServerUnavailableException("AI 서버가 빈 응답을 반환했습니다.");
         }
 
         log.info("AI 검색 완료 sessionId={} items={} elapsed={}ms",
                 request.sessionId(),
-                graph.items() == null ? 0 : graph.items().size(),
+                response.products() == null ? 0 : response.products().size(),
                 System.currentTimeMillis() - start);
 
-        return AiSearchResponseMapper.toSearchResponse(graph);
+        return response;
     }
 }

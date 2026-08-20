@@ -3,13 +3,21 @@ package com.hackathon.second_hand_first.product.service;
 import com.hackathon.second_hand_first.location.dto.request.ProductLocationGeocodeRequest;
 import com.hackathon.second_hand_first.location.dto.response.GeographicCoordinates;
 import com.hackathon.second_hand_first.product.domain.Platform;
+import com.hackathon.second_hand_first.product.domain.DeliveryCarrier;
+import com.hackathon.second_hand_first.product.domain.DeliveryMethod;
+import com.hackathon.second_hand_first.product.domain.DeliveryPayer;
+import com.hackathon.second_hand_first.product.domain.DeliveryStatus;
 import com.hackathon.second_hand_first.product.domain.Product;
 import com.hackathon.second_hand_first.product.domain.ProductCategory;
 import com.hackathon.second_hand_first.product.domain.ProductCondition;
 import com.hackathon.second_hand_first.product.domain.ProductStatus;
+import com.hackathon.second_hand_first.product.domain.TradeType;
 import com.hackathon.second_hand_first.product.repository.ProductRepository;
 import com.hackathon.second_hand_first.product.support.ProductFixture;
 import com.hackathon.second_hand_first.search.integration.ai.dto.AiLocationResponse;
+import com.hackathon.second_hand_first.search.integration.ai.dto.AiDeliveryExtraCostResponse;
+import com.hackathon.second_hand_first.search.integration.ai.dto.AiDeliveryFeeResponse;
+import com.hackathon.second_hand_first.search.integration.ai.dto.AiDeliveryOptionResponse;
 import com.hackathon.second_hand_first.search.integration.ai.dto.AiProductResponse;
 import com.hackathon.second_hand_first.search.integration.ai.dto.AiRegionResponse;
 import com.hackathon.second_hand_first.search.integration.ai.dto.AiSellerResponse;
@@ -18,6 +26,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -81,6 +90,64 @@ class ProductUpsertServiceTest {
                 .containsExactly("https://cdn.example.com/updated-1.jpg", "https://cdn.example.com/updated-2.jpg");
     }
 
+    @Test
+    void AI_배송비와_배송옵션을_상품에_저장한다() throws Exception {
+        AiProductResponse response = deliveryProduct();
+        when(productRepository.findByPlatformAndExternalProductId(Platform.BUNJANG, "delivery_1"))
+                .thenReturn(Optional.empty());
+
+        Product saved = productUpsertService.upsert(response);
+
+        assertThat(saved.getDelivery().getStatus()).isEqualTo(DeliveryStatus.AVAILABLE);
+        assertThat(saved.getDelivery().getPayer()).isEqualTo(DeliveryPayer.BUYER);
+        assertThat(saved.getDelivery().getMinFee()).isEqualTo(3_000L);
+        assertThat(saved.getDelivery().getJejuFee()).isEqualTo(6_000L);
+        assertThat(saved.getDelivery().getRemoteAreaFee()).isEqualTo(6_000L);
+        assertThat(saved.getDelivery().getOptions()).hasSize(1);
+        assertThat(saved.getDelivery().getOptions().getFirst().getMethod())
+                .isEqualTo(DeliveryMethod.CONVENIENCE_STORE);
+        assertThat(saved.getDelivery().getOptions().getFirst().getRawCodeJson())
+                .isEqualTo("\"GS_HALF_PRICE\"");
+    }
+
+    private AiProductResponse deliveryProduct() throws Exception {
+        return new AiProductResponse(
+                Platform.BUNJANG,
+                "delivery_1",
+                "AirPods Pro 2",
+                null,
+                ProductCategory.EARPHONES,
+                180_000L,
+                ProductCondition.LIKE_NEW,
+                ProductStatus.SELLING,
+                null,
+                List.of(TradeType.DIRECT, TradeType.DELIVERY),
+                new AiDeliveryFeeResponse(
+                        DeliveryStatus.AVAILABLE,
+                        DeliveryPayer.BUYER,
+                        3_000L,
+                        4_000L,
+                        new AiDeliveryExtraCostResponse(
+                                6_000L,
+                                6_000L,
+                                "제주 및 도서산간 추가 배송비"
+                        ),
+                        List.of(new AiDeliveryOptionResponse(
+                                DeliveryMethod.CONVENIENCE_STORE,
+                                DeliveryCarrier.GS25,
+                                true,
+                                3_000L,
+                                JsonMapper.builder().build().readTree("\"GS_HALF_PRICE\"")
+                        ))
+                ),
+                "https://www.bunjang.co.kr/products/delivery_1",
+                null,
+                null,
+                List.of(),
+                null
+        );
+    }
+
     private AiProductResponse aiProduct(String externalProductId, long price, List<String> imageUrls) {
         return new AiProductResponse(
                 Platform.NAVER_FLEAMARKET,
@@ -89,7 +156,6 @@ class ProductUpsertServiceTest {
                 "AI 서버가 수집한 상품 설명",
                 ProductCategory.EARPHONES,
                 price,
-                299_000L,
                 ProductCondition.LIKE_NEW,
                 ProductStatus.SELLING,
                 new AiLocationResponse(
@@ -104,10 +170,8 @@ class ProductUpsertServiceTest {
                         )),
                         new GeographicCoordinates(37.3947, 127.1112)
                 ),
-                true,
-                true,
+                List.of(TradeType.DIRECT, TradeType.DELIVERY),
                 null,
-                true,
                 "https://fleamarket.naver.com/products/" + externalProductId,
                 150L,
                 OffsetDateTime.parse("2026-08-20T09:00:00+09:00"),

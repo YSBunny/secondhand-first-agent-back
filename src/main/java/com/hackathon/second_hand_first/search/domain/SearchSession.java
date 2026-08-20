@@ -11,6 +11,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.OneToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
@@ -75,8 +76,14 @@ public class SearchSession {
     @Column(name = "result_count", nullable = false)
     private int resultCount;
 
+    @Column(name = "scoring_version", length = 50)
+    private String scoringVersion;
+
     @OneToMany(mappedBy = "searchSession", cascade = CascadeType.ALL, orphanRemoval = true)
     private final List<SearchSessionCondition> conditions = new ArrayList<>();
+
+    @OneToOne(mappedBy = "searchSession", cascade = CascadeType.ALL, orphanRemoval = true)
+    private SearchMarketReference marketReference;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -118,6 +125,28 @@ public class SearchSession {
             Collection<ProductCondition> parsedConditions,
             int resultCount
     ) {
+        complete(
+                keyword,
+                querySummary,
+                lastMessage,
+                maxPrice,
+                priority,
+                parsedConditions,
+                resultCount,
+                null
+        );
+    }
+
+    public void complete(
+            String keyword,
+            String querySummary,
+            String lastMessage,
+            Long maxPrice,
+            SearchPriority priority,
+            Collection<ProductCondition> parsedConditions,
+            int resultCount,
+            String scoringVersion
+    ) {
         if (status != SearchSessionStatus.PROCESSING) {
             throw new IllegalStateException("처리 중인 검색 세션만 완료할 수 있습니다.");
         }
@@ -135,7 +164,15 @@ public class SearchSession {
         this.priority = priority;
         replaceConditions(parsedConditions);
         this.resultCount = resultCount;
+        this.scoringVersion = normalizeNullableText(scoringVersion, 50);
         this.status = SearchSessionStatus.COMPLETED;
+    }
+
+    public void replaceMarketReference(SearchMarketReference marketReference) {
+        if (marketReference != null && marketReference.getSearchSession() != this) {
+            throw new IllegalArgumentException("다른 검색 세션의 시세 기준을 연결할 수 없습니다.");
+        }
+        this.marketReference = marketReference;
     }
 
     public void fail(String failureMessage) {
