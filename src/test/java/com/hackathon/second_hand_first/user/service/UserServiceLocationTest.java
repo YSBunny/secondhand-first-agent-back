@@ -1,5 +1,6 @@
 package com.hackathon.second_hand_first.user.service;
 
+import com.hackathon.second_hand_first.auth.token.RefreshTokenService;
 import com.hackathon.second_hand_first.location.dto.response.CoordinateResponse;
 import com.hackathon.second_hand_first.user.domain.User;
 import com.hackathon.second_hand_first.user.repository.UserRepository;
@@ -15,7 +16,8 @@ import static org.mockito.Mockito.when;
 class UserServiceLocationTest {
 
     private final UserRepository userRepository = mock(UserRepository.class);
-    private final UserService userService = new UserService(userRepository);
+    private final RefreshTokenService refreshTokenService = mock(RefreshTokenService.class);
+    private final UserService userService = new UserService(userRepository, refreshTokenService);
 
     @Test
     void returnsStoredUserCoordinates() {
