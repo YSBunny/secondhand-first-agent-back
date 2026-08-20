@@ -2,6 +2,7 @@ package com.hackathon.second_hand_first.product.service;
 
 import com.hackathon.second_hand_first.location.dto.response.GeographicCoordinates;
 import com.hackathon.second_hand_first.product.domain.Product;
+import com.hackathon.second_hand_first.product.domain.ProductTradeRegion;
 import com.hackathon.second_hand_first.product.repository.ProductRepository;
 import com.hackathon.second_hand_first.search.integration.ai.dto.AiLocationResponse;
 import com.hackathon.second_hand_first.search.integration.ai.dto.AiProductResponse;
@@ -12,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -73,9 +75,26 @@ public class ProductUpsertService {
                 refreshedAt
         );
         updateCoordinates(product, source.location());
+        product.replaceTradeRegions(toTradeRegions(source.location()));
         product.replaceImages(source.imageUrls());
         updateSeller(product, source.seller(), refreshedAt);
         return productRepository.save(product);
+    }
+
+    private List<ProductTradeRegion> toTradeRegions(AiLocationResponse location) {
+        if (location == null || location.regions() == null) {
+            return List.of();
+        }
+        return location.regions().stream()
+                .filter(region -> region != null)
+                .map(region -> ProductTradeRegion.create(
+                        region.name(), region.fullAddress(), region.code(),
+                        region.coordinates() == null
+                                ? null : region.coordinates().latitude(),
+                        region.coordinates() == null
+                                ? null : region.coordinates().longitude()
+                ))
+                .toList();
     }
 
     private void updateCoordinates(

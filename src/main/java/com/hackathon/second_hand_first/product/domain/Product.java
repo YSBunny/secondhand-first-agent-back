@@ -2,6 +2,8 @@ package com.hackathon.second_hand_first.product.domain;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
+import jakarta.persistence.CollectionTable;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -10,9 +12,11 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
+import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.OrderBy;
+import jakarta.persistence.OrderColumn;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
@@ -26,6 +30,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Getter
 @Entity
@@ -118,6 +125,14 @@ public class Product {
     @OrderBy("displayOrder ASC")
     private final List<ProductImage> images = new ArrayList<>();
 
+    @ElementCollection(fetch = FetchType.LAZY)
+    @CollectionTable(
+            name = "product_trade_regions",
+            joinColumns = @JoinColumn(name = "product_id")
+    )
+    @OrderColumn(name = "display_order")
+    private final List<ProductTradeRegion> tradeRegions = new ArrayList<>();
+
     @OneToOne(mappedBy = "product", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
     private SellerSnapshot sellerSnapshot;
 
@@ -207,6 +222,44 @@ public class Product {
 
     public List<ProductImage> getImages() {
         return Collections.unmodifiableList(images);
+    }
+
+    public List<ProductTradeRegion> getTradeRegions() {
+        return Collections.unmodifiableList(tradeRegions);
+    }
+
+    public void replaceTradeRegions(List<ProductTradeRegion> newRegions) {
+        List<ProductTradeRegion> normalizedRegions = newRegions == null
+                ? List.of() : newRegions;
+        Map<String, ProductTradeRegion> savedByAddress = tradeRegions.stream()
+                .filter(ProductTradeRegion::hasCoordinates)
+                .filter(region -> region.getFullAddress() != null)
+                .collect(Collectors.toMap(
+                        region -> normalizeAddress(region.getFullAddress()),
+                        Function.identity(),
+                        (first, ignored) -> first
+                ));
+
+        tradeRegions.clear();
+        normalizedRegions.stream()
+                .filter(region -> region != null)
+                .map(region -> reuseSavedCoordinates(region, savedByAddress))
+                .forEach(tradeRegions::add);
+    }
+
+    private ProductTradeRegion reuseSavedCoordinates(
+            ProductTradeRegion region,
+            Map<String, ProductTradeRegion> savedByAddress
+    ) {
+        if (region.hasCoordinates() || region.getFullAddress() == null) {
+            return region;
+        }
+        ProductTradeRegion saved = savedByAddress.get(
+                normalizeAddress(region.getFullAddress())
+        );
+        return saved == null ? region : region.withCoordinates(
+                saved.getLatitude(), saved.getLongitude()
+        );
     }
 
     public ProductImage addImage(String imageUrl, int displayOrder) {
@@ -360,6 +413,10 @@ public class Product {
             return null;
         }
         return value.trim();
+    }
+
+    private static String normalizeAddress(String value) {
+        return value.trim().replaceAll("\\s+", " ");
     }
 
     private static long requireNonNegative(long value, String message) {

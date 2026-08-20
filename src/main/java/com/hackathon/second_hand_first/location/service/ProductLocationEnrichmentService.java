@@ -3,6 +3,7 @@ package com.hackathon.second_hand_first.location.service;
 import com.hackathon.second_hand_first.location.dto.request.ProductLocationGeocodeRequest;
 import com.hackathon.second_hand_first.location.dto.response.GeographicCoordinates;
 import com.hackathon.second_hand_first.product.domain.Product;
+import com.hackathon.second_hand_first.product.domain.ProductTradeRegion;
 import com.hackathon.second_hand_first.product.repository.ProductRepository;
 import com.hackathon.second_hand_first.search.integration.ai.dto.AiLocationResponse;
 import com.hackathon.second_hand_first.search.integration.ai.dto.AiProductResponse;
@@ -42,8 +43,9 @@ public class ProductLocationEnrichmentService {
 
         Map<String, GeographicCoordinates> coordinatesByAddress =
                 new HashMap<>();
+        rememberSavedRegionCoordinates(source, coordinatesByAddress);
         GeographicCoordinates coordinates =
-                resolveCoordinates(source, location);
+                resolveCoordinates(source, location, coordinatesByAddress);
         rememberCoordinates(
                 coordinatesByAddress,
                 location.fullAddress(),
@@ -67,7 +69,8 @@ public class ProductLocationEnrichmentService {
 
     private GeographicCoordinates resolveCoordinates(
             AiProductResponse source,
-            AiLocationResponse location
+            AiLocationResponse location,
+            Map<String, GeographicCoordinates> coordinatesByAddress
     ) {
         // AI 응답에 이미 좌표가 있다면 그대로 사용
         if (location.coordinates() != null) {
@@ -77,6 +80,9 @@ public class ProductLocationEnrichmentService {
         String address = normalizeAddress(location.fullAddress());
         if (address == null) {
             return null;
+        }
+        if (coordinatesByAddress.containsKey(address)) {
+            return coordinatesByAddress.get(address);
         }
 
         // 같은 상품·같은 주소의 DB 좌표 재사용
@@ -101,6 +107,34 @@ public class ProductLocationEnrichmentService {
         return kakaoLocalService
                 .findCoordinates(address)
                 .orElse(null);
+    }
+
+    private void rememberSavedRegionCoordinates(
+            AiProductResponse source,
+            Map<String, GeographicCoordinates> coordinatesByAddress
+    ) {
+        productRepository.findByPlatformAndExternalProductId(
+                        source.platform(), source.externalProductId()
+                )
+                .ifPresent(product -> product.getTradeRegions().stream()
+                        .filter(region -> region.getFullAddress() != null)
+                        .filter(region -> region.getLatitude() != null
+                                && region.getLongitude() != null)
+                        .forEach(region -> rememberRegionCoordinates(
+                                coordinatesByAddress, region
+                        )));
+    }
+
+    private void rememberRegionCoordinates(
+            Map<String, GeographicCoordinates> coordinatesByAddress,
+            ProductTradeRegion region
+    ) {
+        coordinatesByAddress.put(
+                normalizeAddress(region.getFullAddress()),
+                new GeographicCoordinates(
+                        region.getLatitude(), region.getLongitude()
+                )
+        );
     }
 
     private List<AiRegionResponse> enrichRegions(

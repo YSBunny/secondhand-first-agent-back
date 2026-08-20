@@ -7,6 +7,7 @@ import com.hackathon.second_hand_first.product.domain.Product;
 import com.hackathon.second_hand_first.product.domain.ProductCategory;
 import com.hackathon.second_hand_first.product.domain.ProductCondition;
 import com.hackathon.second_hand_first.product.domain.ProductStatus;
+import com.hackathon.second_hand_first.product.domain.ProductTradeRegion;
 import com.hackathon.second_hand_first.product.repository.ProductRepository;
 import com.hackathon.second_hand_first.product.support.ProductFixture;
 import com.hackathon.second_hand_first.search.integration.ai.dto.AiLocationResponse;
@@ -152,6 +153,38 @@ class ProductLocationEnrichmentServiceTest {
                         source.externalProductId()
                 );
         verify(kakaoLocalService, never()).findCoordinates(PANGYO);
+    }
+
+    @Test
+    void reusesSavedCoordinatesForSameRegionAddress() {
+        Product existing = ProductFixture.airPodsPro2();
+        GeographicCoordinates savedCoordinates =
+                new GeographicCoordinates(37.5007, 127.0365);
+        existing.replaceTradeRegions(List.of(ProductTradeRegion.create(
+                "역삼동",
+                GANGNAM,
+                "gangnam-code",
+                savedCoordinates.latitude(),
+                savedCoordinates.longitude()
+        )));
+        AiProductResponse source = product(new AiLocationResponse(
+                PANGYO,
+                PANGYO,
+                ProductLocationGeocodeRequest.Precision.FULL,
+                List.of(new AiRegionResponse(
+                        "역삼동", GANGNAM, "gangnam-code", null
+                )),
+                new GeographicCoordinates(37.3947, 127.1112)
+        ));
+        when(productRepository.findByPlatformAndExternalProductId(
+                source.platform(), source.externalProductId()
+        )).thenReturn(Optional.of(existing));
+
+        AiProductResponse result = service.enrich(source);
+
+        assertThat(result.location().regions().getFirst().coordinates())
+                .isEqualTo(savedCoordinates);
+        verify(kakaoLocalService, never()).findCoordinates(GANGNAM);
     }
 
     private AiProductResponse product(AiLocationResponse location) {
