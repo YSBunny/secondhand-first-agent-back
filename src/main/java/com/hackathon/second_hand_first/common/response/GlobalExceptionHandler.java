@@ -1,6 +1,7 @@
 package com.hackathon.second_hand_first.common.response;
 
 import com.hackathon.second_hand_first.auth.exception.UnauthorizedException;
+import com.hackathon.second_hand_first.location.exception.KakaoLocalException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -26,5 +27,13 @@ public class GlobalExceptionHandler {
                     .orElse("요청 값을 확인해 주세요.");
         }
         return ResponseEntity.badRequest().body(ApiResponse.error(message));
+    }
+
+    @ExceptionHandler(KakaoLocalException.class)
+    public ResponseEntity<ApiResponse<Void>> handleKakaoLocalException(
+            KakaoLocalException exception
+    ) {
+        return ResponseEntity.status(exception.getStatus())
+                .body(ApiResponse.error(exception.getMessage()));
     }
 }
