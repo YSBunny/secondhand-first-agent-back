@@ -34,7 +34,7 @@ class SearchSessionTest {
                 "당근·번개장터·중고나라에서 12개 매물을 찾았어요.",
                 300_000L,
                 SearchPriority.BEST_VALUE,
-                List.of(ProductCondition.LIKE_NEW, ProductCondition.GOOD),
+                List.of(ProductCondition.LIKE_NEW, ProductCondition.LIGHTLY_USED),
                 12
         );
 
@@ -44,7 +44,7 @@ class SearchSessionTest {
         assertThat(session.getPriority()).isEqualTo(SearchPriority.BEST_VALUE);
         assertThat(session.getConditions())
                 .extracting(SearchSessionCondition::getCondition)
-                .containsExactly(ProductCondition.LIKE_NEW, ProductCondition.GOOD);
+                .containsExactly(ProductCondition.LIKE_NEW, ProductCondition.LIGHTLY_USED);
         assertThat(session.getResultCount()).isEqualTo(12);
     }
 
@@ -58,7 +58,7 @@ class SearchSessionTest {
                 null,
                 null,
                 null,
-                List.of(ProductCondition.GOOD, ProductCondition.GOOD),
+                List.of(ProductCondition.LIGHTLY_USED, ProductCondition.LIGHTLY_USED),
                 0
         );
 

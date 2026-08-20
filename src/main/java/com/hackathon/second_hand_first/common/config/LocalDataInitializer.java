@@ -74,9 +74,9 @@ public class LocalDataInitializer implements ApplicationRunner {
 
     private List<Product> loadFixtureProducts() {
         return List.of(
-                findProduct(Platform.DAANGN, "mock_1"),
-                findProduct(Platform.JOONGGONARA, "mock_2"),
-                findProduct(Platform.BUNGJANG, "mock_3")
+                findProduct(Platform.NAVER_FLEAMARKET, "mock_1"),
+                findProduct(Platform.JOONGNA, "mock_2"),
+                findProduct(Platform.BUNJANG, "mock_3")
         );
     }
 
@@ -97,7 +97,7 @@ public class LocalDataInitializer implements ApplicationRunner {
                 "30만원 이하, 중고 가능, 최고 가성비",
                 "당근·번개장터·중고나라에서 12개 매물을 찾았어요.",
                 300_000L,
-                List.of(ProductCondition.LIKE_NEW, ProductCondition.GOOD),
+                List.of(ProductCondition.LIKE_NEW, ProductCondition.LIGHTLY_USED),
                 12
         );
         createSearchSession(
@@ -108,7 +108,7 @@ public class LocalDataInitializer implements ApplicationRunner {
                 "100만원 이하, 상태 좋은 상품",
                 "가격과 상품 상태가 좋은 매물을 추렸어요.",
                 1_000_000L,
-                List.of(ProductCondition.LIKE_NEW, ProductCondition.GOOD),
+                List.of(ProductCondition.LIKE_NEW, ProductCondition.LIGHTLY_USED),
                 7
         );
         createSearchSession(
@@ -119,7 +119,7 @@ public class LocalDataInitializer implements ApplicationRunner {
                 "미개봉 상품 우선",
                 "미개봉 애플워치 매물을 찾아봤어요.",
                 null,
-                List.of(ProductCondition.UNOPENED),
+                List.of(ProductCondition.NEW),
                 4
         );
     }

@@ -90,10 +90,19 @@ public class BestDealService {
      */
     private int calculateRecommendationScore(Product product) {
         int conditionScore = switch (product.getCondition()) {
-            case UNOPENED -> 20;
+            case NEW -> 20;
             case LIKE_NEW -> 16;
-            case GOOD -> 10;
+            case LIGHTLY_USED -> 10;
             case USED -> 4;
+            // UNSPECIFIED는 판매자가 상태를 안 적은 것이고 UNKNOWN은 우리가 해석하지
+            // 못한 것이다. 둘 다 "상태가 나쁘다"는 뜻은 아니지만, 확인된 USED보다는
+            // 아래에 둔다 — 상태를 알 수 없는 매물을 확인된 매물보다 위로 올리면
+            // 정보가 없는 쪽이 유리해진다.
+            //
+            // AI 쪽(tools.py)의 순서를 그대로 따른다.
+            //   AI      NEW 100 > LIKE_NEW 80 > USED 60 > 미상 50 > DAMAGED 30
+            //   백엔드   NEW  20 > LIKE_NEW 16 > LIGHTLY_USED 10 > USED 4 > 미상 3
+            case UNSPECIFIED, UNKNOWN -> 3;
         };
         int sellerScore = product.getSellerSnapshot() == null
                 ? 0

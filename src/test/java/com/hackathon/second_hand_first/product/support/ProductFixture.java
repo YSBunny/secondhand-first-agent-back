@@ -18,7 +18,7 @@ public final class ProductFixture {
 
     public static Product airPodsPro2() {
         Product product = Product.create(
-                Platform.DAANGN,
+                Platform.NAVER_FLEAMARKET,
                 "mock_1",
                 "AirPods Pro 2 (USB-C)",
                 "박스와 구성품이 모두 포함된 상품입니다.",
@@ -31,7 +31,7 @@ public final class ProductFixture {
                 true,
                 true,
                 true,
-                "https://www.daangn.com/articles/mock_1",
+                "https://fleamarket.naver.com/products/mock_1",
                 128L,
                 PUBLISHED_AT,
                 REFRESHED_AT

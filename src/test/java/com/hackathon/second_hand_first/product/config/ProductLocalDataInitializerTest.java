@@ -20,7 +20,7 @@ class ProductLocalDataInitializerTest {
     @Test
     void local_프로필에서_샘플상품을_중복없이_저장한다() throws Exception {
         assertThat(productRepository.count()).isEqualTo(3);
-        assertThat(productRepository.existsByPlatformAndExternalProductId(Platform.DAANGN, "mock_1"))
+        assertThat(productRepository.existsByPlatformAndExternalProductId(Platform.NAVER_FLEAMARKET, "mock_1"))
                 .isTrue();
 
         initializer.run(null);
