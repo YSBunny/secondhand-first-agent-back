@@ -2,6 +2,7 @@ package com.hackathon.second_hand_first.search.service;
 
 import com.hackathon.second_hand_first.carbon.dto.CarbonSavingResult;
 import com.hackathon.second_hand_first.carbon.service.CarbonSavingService;
+import com.hackathon.second_hand_first.location.service.ProductLocationEnrichmentService;
 import com.hackathon.second_hand_first.search.application.AiSearchClient;
 import com.hackathon.second_hand_first.product.domain.Product;
 import com.hackathon.second_hand_first.product.service.ProductUpsertService;
@@ -52,6 +53,7 @@ public class SearchSessionService {
     private final ProductUpsertService productUpsertService;
     private final CarbonSavingService carbonSavingService;
     private final UserRepository userRepository;
+    private final ProductLocationEnrichmentService productLocationEnrichmentService;
 
     @Transactional
     public SearchSessionCreateResponse create(
@@ -69,7 +71,21 @@ public class SearchSessionService {
                 )
         );
         validateAiResponse(aiResponse);
-        AiParsedConditionsResponse analysis = aiResponse.parsedConditions();
+        validateRecommendations(aiResponse.products());
+
+        List<AiRecommendedProductResponse> enrichedProducts =
+                productLocationEnrichmentService.enrichRecommendations(
+                        aiResponse.products()
+                );
+
+        AiSearchResponse enrichedResponse = new AiSearchResponse(
+                aiResponse.parsedConditions(),
+                aiResponse.assistantMessage(),
+                aiResponse.resultCount(),
+                enrichedProducts
+        );
+
+        AiParsedConditionsResponse analysis = enrichedResponse.parsedConditions();
         SearchSession session = SearchSession.create(
                 sessionId,
                 userId,
@@ -90,8 +106,13 @@ public class SearchSessionService {
                 saved,
                 aiResponse.assistantMessage()
         ));
-        List<SearchResultItemResponse> recommendations = saveSearchResults(saved, aiResponse.products());
-        return SearchSessionCreateResponse.of(saved, aiResponse, recommendations);
+        List<SearchResultItemResponse> recommendations =
+                saveSearchResults(saved, enrichedResponse.products());
+        return SearchSessionCreateResponse.of(
+                saved,
+                enrichedResponse,
+                recommendations
+        );
     }
 
     public SearchSessionPageResponse getRecentSessions(
@@ -210,6 +231,10 @@ public class SearchSessionService {
     }
 
     private void validateRecommendations(List<AiRecommendedProductResponse> recommendations) {
+        if (recommendations == null || recommendations.isEmpty()) {
+            return;
+        }
+
         Set<Integer> ranks = new HashSet<>();
         Set<String> productKeys = new HashSet<>();
         for (AiRecommendedProductResponse recommendation : recommendations) {

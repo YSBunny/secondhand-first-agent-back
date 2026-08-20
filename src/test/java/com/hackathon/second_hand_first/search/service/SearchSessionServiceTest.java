@@ -1,6 +1,7 @@
 package com.hackathon.second_hand_first.search.service;
 
 import com.hackathon.second_hand_first.carbon.service.CarbonSavingService;
+import com.hackathon.second_hand_first.location.service.ProductLocationEnrichmentService;
 import com.hackathon.second_hand_first.product.domain.ProductCondition;
 import com.hackathon.second_hand_first.product.service.ProductUpsertService;
 import com.hackathon.second_hand_first.search.application.AiSearchClient;
@@ -53,6 +54,9 @@ class SearchSessionServiceTest {
     @Mock
     private UserRepository userRepository;
 
+    @Mock
+    private ProductLocationEnrichmentService productLocationEnrichmentService;
+
     private SearchSessionService searchSessionService;
 
     @BeforeEach
@@ -64,7 +68,8 @@ class SearchSessionServiceTest {
                 aiSearchClient,
                 productUpsertService,
                 carbonSavingService,
-                userRepository
+                userRepository,
+                productLocationEnrichmentService
         );
     }
 
@@ -84,6 +89,8 @@ class SearchSessionServiceTest {
                 List.of()
         );
         when(aiSearchClient.search(any())).thenReturn(aiResponse);
+        when(productLocationEnrichmentService.enrichRecommendations(aiResponse.products()))
+                .thenReturn(aiResponse.products());
         when(searchSessionRepository.save(any(SearchSession.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 

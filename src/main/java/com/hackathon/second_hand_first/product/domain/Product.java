@@ -87,6 +87,12 @@ public class Product {
     @Column(length = 100)
     private String location;
 
+    @Column
+    private Double latitude;
+
+    @Column
+    private Double longitude;
+
     @Column(name = "direct_trade_available", nullable = false)
     private boolean directTradeAvailable;
 
@@ -299,6 +305,17 @@ public class Product {
         for (int index = commonSize; index < normalizedUrls.size(); index++) {
             addImage(normalizedUrls.get(index), index);
         }
+    }
+
+    public void updateCoordinates(Double latitude, Double longitude) {
+        if ((latitude == null) != (longitude == null)) {
+            throw new IllegalArgumentException(
+                    "위도와 경도는 함께 존재하거나 함께 없어야 합니다."
+            );
+        }
+
+        this.latitude = latitude;
+        this.longitude = longitude;
     }
 
     public long calculateSavingsAmount() {

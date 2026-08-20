@@ -1,5 +1,7 @@
 package com.hackathon.second_hand_first.product.service;
 
+import com.hackathon.second_hand_first.location.dto.request.ProductLocationGeocodeRequest;
+import com.hackathon.second_hand_first.location.dto.response.GeographicCoordinates;
 import com.hackathon.second_hand_first.product.domain.Platform;
 import com.hackathon.second_hand_first.product.domain.Product;
 import com.hackathon.second_hand_first.product.domain.ProductCategory;
@@ -7,6 +9,7 @@ import com.hackathon.second_hand_first.product.domain.ProductCondition;
 import com.hackathon.second_hand_first.product.domain.ProductStatus;
 import com.hackathon.second_hand_first.product.repository.ProductRepository;
 import com.hackathon.second_hand_first.product.support.ProductFixture;
+import com.hackathon.second_hand_first.search.integration.ai.dto.AiLocationResponse;
 import com.hackathon.second_hand_first.search.integration.ai.dto.AiProductResponse;
 import com.hackathon.second_hand_first.search.integration.ai.dto.AiSellerResponse;
 import org.junit.jupiter.api.BeforeEach;
@@ -51,6 +54,8 @@ class ProductUpsertServiceTest {
         assertThat(saved.getImages()).extracting("imageUrl")
                 .containsExactly("https://cdn.example.com/new.jpg");
         assertThat(saved.getSellerSnapshot().getSellerName()).isEqualTo("판교 판매자");
+        assertThat(saved.getLatitude()).isEqualTo(37.3947);
+        assertThat(saved.getLongitude()).isEqualTo(127.1112);
     }
 
     @Test
@@ -83,7 +88,13 @@ class ProductUpsertServiceTest {
                 299_000L,
                 ProductCondition.LIKE_NEW,
                 ProductStatus.SELLING,
-                "판교",
+                new AiLocationResponse(
+                        "판교동",
+                        "경기도 성남시 분당구 판교동",
+                        ProductLocationGeocodeRequest.Precision.FULL,
+                        List.of(),
+                        new GeographicCoordinates(37.3947, 127.1112)
+                ),
                 true,
                 true,
                 true,

@@ -1,7 +1,9 @@
 package com.hackathon.second_hand_first.product.service;
 
+import com.hackathon.second_hand_first.location.dto.response.GeographicCoordinates;
 import com.hackathon.second_hand_first.product.domain.Product;
 import com.hackathon.second_hand_first.product.repository.ProductRepository;
+import com.hackathon.second_hand_first.search.integration.ai.dto.AiLocationResponse;
 import com.hackathon.second_hand_first.search.integration.ai.dto.AiProductResponse;
 import com.hackathon.second_hand_first.search.integration.ai.dto.AiSellerResponse;
 import lombok.RequiredArgsConstructor;
@@ -39,7 +41,9 @@ public class ProductUpsertService {
                         source.referencePrice(),
                         source.condition(),
                         source.status(),
-                        source.location(),
+                        source.location() == null
+                                ? null
+                                : source.location().fullAddress(),
                         source.directTradeAvailable(),
                         source.shippingAvailable(),
                         source.carbonReductionEligible(),
@@ -57,7 +61,9 @@ public class ProductUpsertService {
                 source.referencePrice(),
                 source.condition(),
                 source.status(),
-                source.location(),
+                source.location() == null
+                        ? null
+                        : source.location().fullAddress(),
                 source.directTradeAvailable(),
                 source.shippingAvailable(),
                 source.carbonReductionEligible(),
@@ -66,9 +72,27 @@ public class ProductUpsertService {
                 publishedAt,
                 refreshedAt
         );
+        updateCoordinates(product, source.location());
         product.replaceImages(source.imageUrls());
         updateSeller(product, source.seller(), refreshedAt);
         return productRepository.save(product);
+    }
+
+    private void updateCoordinates(
+            Product product,
+            AiLocationResponse location
+    ) {
+        if (location == null || location.coordinates() == null) {
+            product.updateCoordinates(null, null);
+            return;
+        }
+
+        GeographicCoordinates coordinates = location.coordinates();
+
+        product.updateCoordinates(
+                coordinates.latitude(),
+                coordinates.longitude()
+        );
     }
 
     private void updateSeller(Product product, AiSellerResponse seller, LocalDateTime capturedAt) {
@@ -104,4 +128,5 @@ public class ProductUpsertService {
     private int defaultZero(Integer value) {
         return value == null ? 0 : value;
     }
+
 }
